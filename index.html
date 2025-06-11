@@ -117,21 +117,17 @@
     let highScore = Number(localStorage.getItem("highScore") || 0);
     let isMouthOpen = true;
     let mouthTimer = 0;
-    let mouthInterval = getRandomInterval();
+    let mouthInterval = 60;
     let gameOver = false;
     let fingerLift = false;
+    let selectedFinger = null;
 
     const images = {};
     const fingerImages = [];
-    let currentFinger = null;
-
-    const sources = {
-      open: "open.jpg",
-      close: "close.jpg"
-    };
+    const sources = { open: "open.jpg", close: "close.jpg" };
 
     const endSEList = [...Array(10)].map((_, i) => new Audio(`end${i + 1}.wav`));
-    const bgmList = ["bgm1.mp3", "bgm2.mp3", "bgm3.mp3", "bgm4.mp3"];
+    const bgmList = ["bgm1.mp3", "bgm2.mp3", "bgm3.mp3", "bgm4.mp3", "bgm5.mp3];
     let bgmIndex = 0;
 
     function resizeCanvas() {
@@ -142,42 +138,32 @@
     resizeCanvas();
 
     function loadImages() {
-      const loadPromises = [];
+      const promises = [];
 
-      // open/close
       for (const [key, src] of Object.entries(sources)) {
-        const promise = new Promise(resolve => {
+        promises.push(new Promise(resolve => {
           const img = new Image();
-          img.onload = () => {
-            images[key] = img;
-            resolve();
-          };
+          img.onload = () => { images[key] = img; resolve(); };
           img.src = src;
-        });
-        loadPromises.push(promise);
+        }));
       }
 
-      // fingers
       for (let i = 1; i <= 12; i++) {
-        const promise = new Promise(resolve => {
+        promises.push(new Promise(resolve => {
           const img = new Image();
-          img.onload = () => {
-            fingerImages[i - 1] = img;
-            resolve();
-          };
+          img.onload = () => { fingerImages.push(img); resolve(); };
           img.src = `finger${i}.png`;
-        });
-        loadPromises.push(promise);
+        }));
       }
 
-      return Promise.all(loadPromises);
+      return Promise.all(promises);
     }
 
     function selectFingerByProbability() {
       const r = Math.random();
-      if (r < 0.6) return fingerImages[Math.floor(r * 4 / 0.6)]; // 0-3
-      if (r < 0.95) return fingerImages[4 + Math.floor((r - 0.6) * 7 / 0.35)]; // 4-10
-      return fingerImages[11]; // 12番目
+      if (r < 0.6) return fingerImages[Math.floor(r * 4 / 0.6)];
+      if (r < 0.95) return fingerImages[4 + Math.floor((r - 0.6) * 7 / 0.35)];
+      return fingerImages[11];
     }
 
     function getRandomInterval() {
@@ -200,7 +186,7 @@
       isMouthOpen = true;
       mouthTimer = 0;
       mouthInterval = getRandomInterval();
-      currentFinger = selectFingerByProbability();
+      selectedFinger = selectFingerByProbability();
       scoreEl.textContent = "スコア: 0";
       result.style.display = "none";
       tapBtn.style.display = "block";
@@ -214,15 +200,15 @@
 
       const bg = isMouthOpen ? images.open : images.close;
       const scale = Math.min(canvas.width / bg.width, canvas.height / bg.height);
-      const imgWidth = bg.width * scale;
-      const imgHeight = bg.height * scale;
-      const imgX = (canvas.width - imgWidth) / 2;
-      const imgY = (canvas.height - imgHeight) / 2;
+      const imgW = bg.width * scale;
+      const imgH = bg.height * scale;
+      const imgX = (canvas.width - imgW) / 2;
+      const imgY = (canvas.height - imgH) / 2;
 
-      ctx.drawImage(bg, imgX, imgY, imgWidth, imgHeight);
+      ctx.drawImage(bg, imgX, imgY, imgW, imgH);
       const offsetY = fingerLift ? -20 : 0;
-      if (currentFinger) {
-        ctx.drawImage(currentFinger, imgX, imgY + offsetY, imgWidth, imgHeight);
+      if (selectedFinger) {
+        ctx.drawImage(selectedFinger, imgX, imgY + offsetY, imgW, imgH);
       }
 
       mouthTimer++;
@@ -240,7 +226,6 @@
       puni.currentTime = 0;
       puni.play();
       fingerLift = true;
-      currentFinger = selectFingerByProbability();
       setTimeout(() => fingerLift = false, 100);
 
       if (isMouthOpen) {
@@ -268,7 +253,7 @@
     tapBtn.addEventListener("click", handleInput);
     retryBtn.addEventListener("click", resetGame);
     tweetBtn.addEventListener("click", () => {
-      const tweetText = `#お口に指を入れるゲーム で${score}点をとったよ！ #renge_morinyan #新人Vtuber`;
+      const tweetText = `#お口に指を入れるゲーム で${score}点をとったよ！ #renge_morinyan`;
       const tweetURL = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
       window.open(tweetURL, "_blank");
     });
