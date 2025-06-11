@@ -127,7 +127,7 @@
     const sources = { open: "open.jpg", close: "close.jpg" };
 
     const endSEList = [...Array(10)].map((_, i) => new Audio(`end${i + 1}.wav`));
-    const bgmList = ["bgm1.mp3", "bgm2.mp3", "bgm3.mp3", "bgm4.mp3", "bgm5.mp3];
+    const bgmList = ["bgm1.mp3", "bgm2.mp3", "bgm3.mp3", "bgm4.mp3"];
     let bgmIndex = 0;
 
     function resizeCanvas() {
@@ -253,7 +253,7 @@
     tapBtn.addEventListener("click", handleInput);
     retryBtn.addEventListener("click", resetGame);
     tweetBtn.addEventListener("click", () => {
-      const tweetText = `#お口に指を入れるゲーム で${score}点をとったよ！ #renge_morinyan`;
+      const tweetText = `お口に指を入れるゲームで${score}点をとったよ！ #数寄屋橋れんげ`;
       const tweetURL = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
       window.open(tweetURL, "_blank");
     });
