@@ -2,266 +2,153 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>指を入れるゲーム</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>お口に指を入れるゲーム</title>
   <style>
     html, body {
       margin: 0;
       padding: 0;
       overflow: hidden;
       background: black;
-      width: 100%;
-      height: 100%;
+      height: 100vh;
     }
     canvas {
       display: block;
-      width: 100vw;
-      height: 100vh;
     }
-    #score, #highScore {
+    #ui {
       position: absolute;
-      left: 20px;
-      color: white;
-      font-family: sans-serif;
-      text-shadow: 2px 2px 4px black;
+      top: 10px;
+      left: 10px;
       z-index: 10;
     }
-    #score {
-      top: 20px;
-      font-size: 60px;
+    #startBtn, #retryBtn, #tweetBtn {
+      font-size: 18px;
+      padding: 10px;
+      margin-right: 10px;
     }
-    #highScore {
-      top: 100px;
-      font-size: 40px;
-      color: yellow;
-    }
-    #result {
+    #retryBtn, #tweetBtn {
       display: none;
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.9);
-      color: white;
-      font-size: 50px;
-      text-align: center;
-      padding-top: 300px;
-      z-index: 20;
-    }
-    #tweetBtn, #retryBtn, #startBtn {
-      font-size: 30px;
-      margin: 20px;
-      padding: 10px 30px;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-    }
-    #tweetBtn {
-      background: #1DA1F2;
-      color: white;
-    }
-    #retryBtn {
-      background: #4CAF50;
-      color: white;
-    }
-    #startOverlay {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.9);
-      color: white;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      z-index: 30;
-    }
-    #tapButton {
-      display: none;
-      position: absolute;
-      bottom: 40px;
-      right: 40px;
-      padding: 30px 40px;
-      background: rgba(255, 255, 255, 0.8);
-      font-size: 30px;
-      border-radius: 20px;
-      z-index: 30;
-      user-select: none;
     }
   </style>
 </head>
 <body>
-  <div id="score">スコア: 0</div>
-  <div id="highScore">ハイスコア: 0</div>
-  <div id="result">
-    <div id="finalScore"></div>
-    <button id="tweetBtn">スコアをXに投稿</button>
-    <button id="retryBtn">もう一度挑戦</button>
-  </div>
-  <div id="startOverlay">
-    <h1>指を入れるゲーム</h1>
+  <div id="ui">
     <button id="startBtn">スタート</button>
+    <button id="retryBtn">もう一度挑戦</button>
+    <a id="tweetBtn" href="#" target="_blank">Xに投稿</a>
   </div>
-  <div id="tapButton">指を入れる！</div>
   <canvas id="gameCanvas"></canvas>
-
   <audio id="bgm" src="bgm.mp3" loop></audio>
-  <audio id="puni" src="puni.wav"></audio>
-  <audio id="end" src="end.wav"></audio>
 
   <script>
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
-    const scoreElement = document.getElementById("score");
-    const highScoreElement = document.getElementById("highScore");
-    const bgm = document.getElementById("bgm");
-    const puni = document.getElementById("puni");
-    const endSE = document.getElementById("end");
-    const result = document.getElementById("result");
-    const finalScore = document.getElementById("finalScore");
-    const tweetBtn = document.getElementById("tweetBtn");
-    const retryBtn = document.getElementById("retryBtn");
-    const tapButton = document.getElementById("tapButton");
-    const startOverlay = document.getElementById("startOverlay");
     const startBtn = document.getElementById("startBtn");
+    const retryBtn = document.getElementById("retryBtn");
+    const tweetBtn = document.getElementById("tweetBtn");
+    const bgm = document.getElementById("bgm");
 
-    const images = {};
-    const imageSources = {
-      open: "open.jpg",
-      close: "close.jpg",
-      finger: "finger.png"
+    let isMouthOpen = false;
+    let gameStarted = false;
+    let gameOver = false;
+    let fingerJump = false;
+    let images = {};
+
+    const loadImage = (src) => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.src = src;
+        img.onload = () => resolve(img);
+      });
     };
 
-    let score = 0;
-    let highScore = Number(localStorage.getItem("highScore") || 0);
-    let gameOver = false;
-    let isMouthOpen = true;
-    let fingerYRatio = 0.78;
-    let fingerJump = false;
-    let scale = 1;
-    let mouthIntervalId = null;
-
-    highScoreElement.textContent = "ハイスコア: " + highScore;
+    const loadImages = async () => {
+      images.open = await loadImage("open.jpg");
+      images.close = await loadImage("close.jpg");
+      images.finger = await loadImage("finger.png");
+    };
 
     const resizeCanvas = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
     };
+
     window.addEventListener("resize", resizeCanvas);
     resizeCanvas();
 
-    const loadImages = () => {
-      return Promise.all(
-        Object.entries(imageSources).map(([key, src]) => {
-          return new Promise(resolve => {
-            const img = new Image();
-            img.onload = () => {
-              images[key] = img;
-              resolve();
-            };
-            img.src = src;
-          });
-        })
-      );
+    let intervalId;
+
+    const startGame = () => {
+      gameStarted = true;
+      gameOver = false;
+      isMouthOpen = false;
+      startBtn.style.display = "none";
+      retryBtn.style.display = "none";
+      tweetBtn.style.display = "none";
+      bgm.currentTime = 0;
+      bgm.play();
+
+      intervalId = setInterval(() => {
+        isMouthOpen = Math.random() < 0.5;
+      }, 500);
+
+      draw();
     };
 
-    const startMouthLoop = () => {
-      clearInterval(mouthIntervalId);
-      mouthIntervalId = setInterval(() => {
-        if (!gameOver) {
-          isMouthOpen = !isMouthOpen;
-        }
-      }, 1000 + Math.random() * 1000);
+    const endGame = () => {
+      clearInterval(intervalId);
+      gameOver = true;
+      retryBtn.style.display = "inline-block";
+      tweetBtn.style.display = "inline-block";
     };
 
     const draw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "black";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      scale = canvas.width / 720;
+      const baseImg = isMouthOpen ? images.open : images.close;
 
-      const img = isMouthOpen ? images.open : images.close;
-      const aspect = img.width / img.height;
-      const manW = 400 * scale;
-      const manH = manW / aspect;
-      const manX = (canvas.width - manW) / 2;
-      const manY = 300 * scale;
-      ctx.drawImage(img, manX, manY, manW, manH);
+      // フル画面幅で上にぴったり合わせて描画
+      const imgW = canvas.width;
+      const imgH = baseImg.height * (imgW / baseImg.width);
+      ctx.drawImage(baseImg, 0, 0, imgW, imgH);
 
-      const fingerW = 100 * scale;
-      const fingerH = 200 * scale;
-      const fingerX = (canvas.width - fingerW) / 2;
-      const baseY = canvas.height * fingerYRatio;
-      const fingerY = fingerJump ? baseY - 20 : baseY;
-      ctx.drawImage(images.finger, fingerX, fingerY, fingerW, fingerH);
+      // 指を同じ位置に重ねて描画
+      const fingerW = canvas.width;
+      const fingerH = images.finger.height * (fingerW / images.finger.width);
+      const fingerY = fingerJump ? -20 : 0; // 上に少しジャンプ
+      ctx.drawImage(images.finger, 0, fingerY, fingerW, fingerH);
 
       if (!gameOver) requestAnimationFrame(draw);
     };
 
-    const handleInput = () => {
-      if (gameOver) return;
-      puni.currentTime = 0;
-      puni.play();
+    const checkInput = () => {
+      if (!gameStarted || gameOver) return;
+
       fingerJump = true;
-      setTimeout(() => { fingerJump = false; }, 100);
+      setTimeout(() => {
+        fingerJump = false;
+      }, 100);
 
-      if (isMouthOpen) {
-        score++;
-        scoreElement.textContent = "スコア: " + score;
-        if (score > highScore) {
-          highScore = score;
-          localStorage.setItem("highScore", highScore);
-          highScoreElement.textContent = "ハイスコア: " + highScore;
-        }
-      } else {
-        gameOver = true;
-        bgm.pause();
-        endSE.currentTime = 0;
-        endSE.play();
-
-        finalScore.textContent = `ゲームオーバー！スコア: ${score}`;
-        tweetBtn.onclick = () => {
-          const tweetURL = `https://twitter.com/intent/tweet?text=私はスコア${score}点を出しました！%0A%23指入れゲーム https://vebopro.github.io/sukiya/`;
-          window.open(tweetURL, "_blank");
-        };
-        result.style.display = "block";
-        tapButton.style.display = "none";
+      if (!isMouthOpen) {
+        endGame();
       }
     };
 
-    const resetGame = () => {
-      score = 0;
-      gameOver = false;
-      isMouthOpen = true;
-      fingerJump = false;
-      scoreElement.textContent = "スコア: 0";
-      result.style.display = "none";
-      startOverlay.style.display = "none";
-      tapButton.style.display = isMobile() ? "block" : "none";
-      bgm.currentTime = 0;
-      bgm.play();
-      startMouthLoop();
-      draw();
-    };
+    document.addEventListener("keydown", (e) => {
+      if (e.code === "Space") checkInput();
+    });
+    document.addEventListener("touchstart", checkInput);
 
-    window.addEventListener("keydown", e => {
-      if (e.code === "Space") handleInput();
+    startBtn.addEventListener("click", startGame);
+    retryBtn.addEventListener("click", startGame);
+
+    tweetBtn.addEventListener("click", () => {
+      const tweetText = encodeURIComponent("お口に指を入れるゲームに挑戦したよ！#数寄屋橋れんげ");
+      const tweetUrl = encodeURIComponent(location.href);
+      tweetBtn.href = `https://twitter.com/intent/tweet?text=${tweetText}&url=${tweetUrl}`;
     });
 
-    tapButton.addEventListener("click", handleInput);
-    retryBtn.addEventListener("click", resetGame);
-    startBtn.addEventListener("click", resetGame);
-
-    const isMobile = () => /iPhone|Android|iPad/.test(navigator.userAgent);
-
-    loadImages().then(() => {
-      // スタート画面表示中
-    });
-
-    window.addEventListener("touchstart", () => {
-      if (bgm.paused) bgm.play();
-    });
+    loadImages();
   </script>
 </body>
 </html>
