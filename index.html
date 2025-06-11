@@ -20,26 +20,86 @@
       top: 20px;
       left: 20px;
       color: white;
-      font-size: 120px; /* ← 5倍に拡大 */
+      font-size: 120px;
       font-family: sans-serif;
       text-shadow: 4px 4px 8px black;
       z-index: 10;
+    }
+    #highScore {
+      position: absolute;
+      top: 160px;
+      left: 20px;
+      color: yellow;
+      font-size: 60px;
+      font-family: sans-serif;
+      text-shadow: 2px 2px 4px black;
+      z-index: 10;
+    }
+    #result {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.9);
+      color: white;
+      font-size: 60px;
+      text-align: center;
+      padding-top: 200px;
+      z-index: 20;
+    }
+    #tweetBtn {
+      font-size: 30px;
+      margin-top: 20px;
+      padding: 10px 30px;
+      background: #1DA1F2;
+      border: none;
+      color: white;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    #tapButton {
+      display: none;
+      position: absolute;
+      bottom: 40px;
+      right: 40px;
+      padding: 30px 40px;
+      background: rgba(255, 255, 255, 0.8);
+      font-size: 30px;
+      border-radius: 20px;
+      z-index: 30;
+      user-select: none;
     }
   </style>
 </head>
 <body>
   <div id="score">スコア: 0</div>
+  <div id="highScore">ハイスコア: 0</div>
+  <div id="result">
+    <div id="finalScore"></div>
+    <button id="tweetBtn">スコアをXに投稿</button>
+  </div>
+  <div id="tapButton">指を入れる！</div>
   <canvas id="gameCanvas"></canvas>
+
   <audio id="bgm" src="bgm.mp3" loop></audio>
   <audio id="puni" src="puni.wav"></audio>
+  <audio id="end" src="end.wav"></audio>
 
   <script>
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
-
     const scoreElement = document.getElementById("score");
+    const highScoreElement = document.getElementById("highScore");
     const bgm = document.getElementById("bgm");
     const puni = document.getElementById("puni");
+    const endSE = document.getElementById("end");
+    const result = document.getElementById("result");
+    const finalScore = document.getElementById("finalScore");
+    const tweetBtn = document.getElementById("tweetBtn");
+    const tapButton = document.getElementById("tapButton");
+
     bgm.volume = 1.0;
 
     const images = {};
@@ -51,24 +111,22 @@
     };
 
     let score = 0;
+    let highScore = Number(localStorage.getItem("highScore") || 0);
     let gameOver = false;
     let isMouthOpen = true;
     let fingerX = 0;
-    let fingerYRatio = 0.78; // 背景比率に対して指のY位置（相対）
+    let fingerYRatio = 0.78;
     let fingerDir = 4;
     let mouthTimer = 0;
     const mouthInterval = 60;
-
-    const logicalWidth = 1920;
-    const logicalHeight = 1080;
     let scale = 1;
 
-    function resizeCanvas() {
-      scale = window.innerWidth / logicalWidth;
-      canvas.width = window.innerWidth;
-      canvas.height = logicalHeight * scale;
-    }
+    highScoreElement.textContent = "ハイスコア: " + highScore;
 
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
     window.addEventListener("resize", resizeCanvas);
     resizeCanvas();
 
@@ -87,11 +145,28 @@
       );
     };
 
+    const resetGame = () => {
+      score = 0;
+      gameOver = false;
+      isMouthOpen = true;
+      fingerX = 0;
+      fingerDir = 4;
+      mouthTimer = 0;
+      scoreElement.textContent = "スコア: 0";
+      result.style.display = "none";
+      tapButton.style.display = isMobile() ? "block" : "none";
+      bgm.currentTime = 0;
+      bgm.play();
+      draw();
+    };
+
     const draw = () => {
       if (gameOver) return;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(images.back, 0, 0, canvas.width, canvas.height);
+
+      scale = canvas.width / 1920;
 
       const manX = 860 * scale;
       const manY = 300 * scale;
@@ -102,10 +177,14 @@
       const fingerY = canvas.height * fingerYRatio;
       const fingerW = images.finger.width * scale;
       const fingerH = images.finger.height * scale;
-
       ctx.drawImage(images.finger, fingerX, fingerY, fingerW, fingerH);
 
       fingerX += fingerDir;
+
+      // 難易度上昇（最大速度12）
+      const speed = Math.min(4 + Math.floor(score / 5), 12);
+      fingerDir = fingerDir > 0 ? speed : -speed;
+
       if (fingerX < 0 || fingerX + fingerW > canvas.width) {
         fingerDir *= -1;
       }
@@ -119,28 +198,53 @@
       requestAnimationFrame(draw);
     };
 
-    window.addEventListener("keydown", (e) => {
+    const handleInput = () => {
       if (gameOver) return;
-      if (e.code === "Space") {
-        puni.currentTime = 0;
-        puni.play();
+      puni.currentTime = 0;
+      puni.play();
 
-        if (isMouthOpen) {
-          score++;
-          scoreElement.textContent = "スコア: " + score;
-        } else {
-          gameOver = true;
-          scoreElement.textContent = "ゲームオーバー！ スコア: " + score;
+      if (isMouthOpen) {
+        score++;
+        scoreElement.textContent = "スコア: " + score;
+        if (score > highScore) {
+          highScore = score;
+          localStorage.setItem("highScore", highScore);
+          highScoreElement.textContent = "ハイスコア: " + highScore;
         }
+      } else {
+        gameOver = true;
+        bgm.pause();
+        endSE.currentTime = 0;
+        endSE.play();
+
+        finalScore.textContent = `ゲームオーバー！スコア: ${score}`;
+        tweetBtn.onclick = () => {
+          const tweetURL = `https://twitter.com/intent/tweet?text=私はスコア${score}点を出しました！%0A%23指入れゲーム https://vebopro.github.io/sukiya/`;
+          window.open(tweetURL, "_blank");
+        };
+        result.style.display = "block";
+        tapButton.style.display = "none";
+
+        setTimeout(() => {
+          resetGame();
+        }, 2000);
       }
+    };
+
+    window.addEventListener("keydown", e => {
+      if (e.code === "Space") handleInput();
     });
 
-    // ユーザー操作後にBGMを再生（モバイルブラウザ対策）
-    window.addEventListener("click", () => {
+    window.addEventListener("touchstart", () => {
       if (bgm.paused) bgm.play();
     });
 
+    tapButton.addEventListener("click", handleInput);
+
+    const isMobile = () => /iPhone|Android|iPad/.test(navigator.userAgent);
+
     loadImages().then(() => {
+      if (isMobile()) tapButton.style.display = "block";
       draw();
     });
   </script>
