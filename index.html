@@ -96,9 +96,11 @@
   <button id="startButton">ゲームスタート</button>
   <canvas id="gameCanvas"></canvas>
 
-  <audio id="bgm" src="bgm.mp3" loop></audio>
+  <!-- SE/BGM プレースホルダ -->
   <audio id="puni" src="puni.wav"></audio>
-  <audio id="end" src="end.wav"></audio>
+  <!-- BGMは後で動的に選択 -->
+  <audio id="bgm" loop></audio>
+  <!-- ゲームオーバー音も動的 -->
 
   <script>
     const canvas = document.getElementById("gameCanvas");
@@ -111,9 +113,8 @@
     const retryBtn = document.getElementById("retryBtn");
     const tapBtn = document.getElementById("tapButton");
     const startBtn = document.getElementById("startButton");
-    const bgm = document.getElementById("bgm");
     const puni = document.getElementById("puni");
-    const endSE = document.getElementById("end");
+    const bgm = document.getElementById("bgm");
 
     let score = 0;
     let highScore = Number(localStorage.getItem("highScore") || 0);
@@ -121,14 +122,18 @@
     let mouthTimer = 0;
     let mouthInterval = getRandomInterval();
     let gameOver = false;
-
     let fingerLift = false;
+
     const images = {};
     const sources = {
       open: "open.jpg",
       close: "close.jpg",
       finger: "finger.png"
     };
+
+    const endSEList = [...Array(10)].map((_, i) => new Audio(`end${i + 1}.wav`));
+    const bgmList = ["bgm1.mp3", "bgm2.mp3", "bgm3.mp3", "bgm4.mp3"];
+    let bgmIndex = 0;
 
     function resizeCanvas() {
       canvas.width = window.innerWidth;
@@ -153,7 +158,23 @@
     }
 
     function getRandomInterval() {
-      return 30 + Math.floor(Math.random() * 40);
+      if (score >= 40) {
+        return 20 + Math.floor(Math.random() * 40); // ランダムな高速切替
+      } else if (score >= 30) {
+        return 24;
+      } else if (score >= 20) {
+        return 36;
+      } else if (score >= 10) {
+        return 48;
+      } else {
+        return 60; // 初期：1秒 (60fps前提)
+      }
+    }
+
+    function playNextBGM() {
+      bgm.src = bgmList[bgmIndex];
+      bgm.play();
+      bgmIndex = (bgmIndex + 1) % bgmList.length;
     }
 
     function resetGame() {
@@ -165,8 +186,7 @@
       scoreEl.textContent = "スコア: 0";
       result.style.display = "none";
       tapBtn.style.display = "block";
-      bgm.currentTime = 0;
-      bgm.play();
+      playNextBGM();
       draw();
     }
 
@@ -175,7 +195,6 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       const bg = isMouthOpen ? images.open : images.close;
-
       const scale = Math.min(canvas.width / bg.width, canvas.height / bg.height);
       const imgWidth = bg.width * scale;
       const imgHeight = bg.height * scale;
@@ -183,8 +202,6 @@
       const imgY = (canvas.height - imgHeight) / 2;
 
       ctx.drawImage(bg, imgX, imgY, imgWidth, imgHeight);
-
-      // 指の画像も同じ位置・スケーリングで重ねる
       const offsetY = fingerLift ? -20 : 0;
       ctx.drawImage(images.finger, imgX, imgY + offsetY, imgWidth, imgHeight);
 
@@ -216,6 +233,7 @@
       } else {
         gameOver = true;
         bgm.pause();
+        const endSE = endSEList[Math.floor(Math.random() * endSEList.length)];
         endSE.currentTime = 0;
         endSE.play();
         finalScore.textContent = `スコア: ${score}`;
