@@ -104,6 +104,7 @@
 
     bgm.volume = 1.0;
 
+    // 画像と初期位置の定義（縦サイズを基準に縮小）
     const images = {};
     const imageSources = {
       back: "back.png",
@@ -117,29 +118,35 @@
     let gameOver = false;
     let isMouthOpen = true;
 
-    // 指の位置をX固定、Yを上下移動に変更
-    const fingerX = canvas.width / 2 - 50; // 指の画像幅想定で中央寄せ調整
-    let fingerY = canvas.height * 0.78;
-    let fingerMoveUp = true; // 上下切替用フラグ
-    const fingerMoveStep = 30; // スペースで上下に動くピクセル量
-    const fingerMinY = 100; // 指の上下移動範囲最小Y座標
-    const fingerMaxY = canvas.height - 200; // 最大Y座標
+    // 指のY位置（上下トグル）
+    // 初期位置は画像の高さとcanvas高さから算出
+    let fingerAtTop = false;
 
-    let mouthTimer = 0;
-    const mouthInterval = 60;
-    let scale = canvas.width / 1920; // 元サイズ基準のスケール
+    // 画像の配置座標（画像によって違うので仮に設定。あとで画像に合わせて調整）
+    // canvasサイズは固定720x1280縦長
+    const canvasWidth = 720;
+    const canvasHeight = 1280;
+
+    // 背景はcanvasいっぱい（720x1280にフィット）
+    // man画像はcanvas中央より少し上の位置に配置
+    // finger画像はman画像の口のあたりに配置（X固定、Y上下トグル）
 
     highScoreElement.textContent = "ハイスコア: " + highScore;
 
-    // リサイズ無効にし、固定サイズにするのでコメントアウト
-    /*
+    // 指の初期X,Y（横方向固定中央付近）
+    const fingerInitialX = (canvasWidth - 100) / 2; // finger幅仮100px想定
+    let fingerY;
+
+    // 画像縮小率は画面高さ基準（画像の高さに合わせて縮小）
+    // それぞれの画像読み込み後にサイズ調整のため利用
+
     const resizeCanvas = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      // canvasは固定720x1280縦長なのでここではサイズ変更しない
+      // 画面の高さに合わせてcanvasをCSSで拡大縮小したい場合はここで調整可能
     };
-    window.removeEventListener("resize", resizeCanvas);
-    //resizeCanvas();
-    */
+
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
 
     const loadImages = () => {
       return Promise.all(
@@ -156,54 +163,63 @@
       );
     };
 
+    // 画像の縦サイズをcanvas高さ1280に合わせて縮小率計算しつつ
+    // それぞれの表示位置をセット
+    let backScale, manScale, fingerScale;
+    let backPos = {x: 0, y: 0};
+    let manPos = {x: 0, y: 0};
+    let fingerPos = {x: 0, y: 0};
+
+    const setupPositionsAndScale = () => {
+      // 背景はcanvas全体に伸ばす
+      backScale = canvasHeight / images.back.height;
+      backPos = {x: 0, y: 0};
+
+      // man画像はcanvas中央上付近に配置
+      manScale = canvasHeight / images.manOpen.height * 0.8; // 少し縮小気味に
+      manPos.x = (canvasWidth - images.manOpen.width * manScale) / 2;
+      manPos.y = canvasHeight * 0.15;
+
+      // finger画像はmanの口の位置に合わせる
+      fingerScale = canvasHeight / images.finger.height * 0.35; // 小さめ
+      fingerPos.x = (canvasWidth - images.finger.width * fingerScale) / 2;
+
+      // fingerのY初期位置（口の下くらいに）
+      fingerY = manPos.y + images.manOpen.height * manScale * 0.75;
+      fingerPos.y = fingerY;
+    };
+
+    const resetFingerPosition = () => {
+      fingerAtTop = false;
+      fingerPos.y = fingerY;
+    };
+
     const resetGame = () => {
       score = 0;
       gameOver = false;
       isMouthOpen = true;
-      fingerY = canvas.height * 0.78;
+      resetFingerPosition();
       scoreElement.textContent = "スコア: 0";
       result.style.display = "none";
       tapButton.style.display = isMobile() ? "block" : "none";
       bgm.currentTime = 0;
-      bgm.play();
+      if (bgm.paused) bgm.play();
       draw();
     };
 
     const draw = () => {
       if (gameOver) return;
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(images.back, 0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-      // manの描画位置・サイズ（スケールをcanvas幅720基準に変更）
-      scale = canvas.width / 1920;
+      // 背景描画
+      ctx.drawImage(images.back, backPos.x, backPos.y, images.back.width * backScale, images.back.height * backScale);
 
-      const manX = 860 * scale;
-      const manY = 300 * scale;
-      const manW = images.manOpen.width * scale;
-      const manH = images.manOpen.height * scale;
-      ctx.drawImage(isMouthOpen ? images.manOpen : images.manClose, manX, manY, manW, manH);
+      // man画像描画（口が開いているか閉じているか）
+      ctx.drawImage(isMouthOpen ? images.manOpen : images.manClose, manPos.x, manPos.y, images.manOpen.width * manScale, images.manOpen.height * manScale);
 
-      // 指の描画はX固定、YはfingerY
-      const fingerW = images.finger.width * scale;
-      const fingerH = images.finger.height * scale;
-      ctx.drawImage(images.finger, fingerX, fingerY, fingerW, fingerH);
-
-      // 指の左右移動はなし（コメントアウト）
-      /*
-      fingerX += fingerDir;
-      const speed = Math.min(4 + Math.floor(score / 5), 12);
-      fingerDir = fingerDir > 0 ? speed : -speed;
-      if (fingerX < 0 || fingerX + fingerW > canvas.width) {
-        fingerDir *= -1;
-      }
-      */
-
-      mouthTimer++;
-      if (mouthTimer >= mouthInterval) {
-        isMouthOpen = !isMouthOpen;
-        mouthTimer = 0;
-      }
+      // finger画像描画（上下トグル）
+      ctx.drawImage(images.finger, fingerPos.x, fingerPos.y, images.finger.width * fingerScale, images.finger.height * fingerScale);
 
       requestAnimationFrame(draw);
     };
@@ -213,19 +229,14 @@
       puni.currentTime = 0;
       puni.play();
 
-      // 指のY座標をスペースで上下反転移動
-      if (fingerMoveUp) {
-        fingerY -= fingerMoveStep;
-        if (fingerY < fingerMinY) {
-          fingerY = fingerMinY;
-          fingerMoveUp = false;
-        }
+      // 指を上下トグル
+      if (fingerAtTop) {
+        // 上にあれば戻す
+        resetFingerPosition();
       } else {
-        fingerY += fingerMoveStep;
-        if (fingerY > fingerMaxY) {
-          fingerY = fingerMaxY;
-          fingerMoveUp = true;
-        }
+        // 下にあれば上に移動（manの口の少し上あたりに）
+        fingerAtTop = true;
+        fingerPos.y = manPos.y + images.manOpen.height * manScale * 0.55;
       }
 
       if (isMouthOpen) {
@@ -269,7 +280,9 @@
     const isMobile = () => /iPhone|Android|iPad/.test(navigator.userAgent);
 
     loadImages().then(() => {
+      setupPositionsAndScale();
       if (isMobile()) tapButton.style.display = "block";
+      bgm.play(); // ページロード時にBGM再生
       draw();
     });
   </script>
