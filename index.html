@@ -74,7 +74,6 @@
       cursor: pointer;
     }
     #tapButton {
-      display: none;
       bottom: 5vh;
       right: 5vw;
     }
@@ -123,10 +122,7 @@
     let mouthInterval = getRandomInterval();
     let gameOver = false;
 
-    let fingerYRatio = 0.7;
-    let fingerY = 0;
     let fingerLift = false;
-
     const images = {};
     const sources = {
       open: "open.jpg",
@@ -157,7 +153,7 @@
     }
 
     function getRandomInterval() {
-      return 30 + Math.floor(Math.random() * 40); // 30?70フレーム
+      return 30 + Math.floor(Math.random() * 40);
     }
 
     function resetGame() {
@@ -168,7 +164,7 @@
       mouthInterval = getRandomInterval();
       scoreEl.textContent = "スコア: 0";
       result.style.display = "none";
-      tapBtn.style.display = isMobile() ? "block" : "none";
+      tapBtn.style.display = "block";
       bgm.currentTime = 0;
       bgm.play();
       draw();
@@ -178,21 +174,19 @@
       if (gameOver) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      const img = isMouthOpen ? images.open : images.close;
+      const bg = isMouthOpen ? images.open : images.close;
 
-      const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
-      const imgWidth = img.width * scale;
-      const imgHeight = img.height * scale;
+      const scale = Math.min(canvas.width / bg.width, canvas.height / bg.height);
+      const imgWidth = bg.width * scale;
+      const imgHeight = bg.height * scale;
       const imgX = (canvas.width - imgWidth) / 2;
       const imgY = (canvas.height - imgHeight) / 2;
 
-      ctx.drawImage(img, imgX, imgY, imgWidth, imgHeight);
+      ctx.drawImage(bg, imgX, imgY, imgWidth, imgHeight);
 
-      fingerY = imgY + imgHeight * fingerYRatio;
-      const fingerWidth = images.finger.width * scale;
-      const fingerHeight = images.finger.height * scale;
+      // 指の画像も同じ位置・スケーリングで重ねる
       const offsetY = fingerLift ? -20 : 0;
-      ctx.drawImage(images.finger, imgX, fingerY + offsetY, fingerWidth, fingerHeight);
+      ctx.drawImage(images.finger, imgX, imgY + offsetY, imgWidth, imgHeight);
 
       mouthTimer++;
       if (mouthTimer >= mouthInterval) {
@@ -234,14 +228,12 @@
     });
     tapBtn.addEventListener("click", handleInput);
     retryBtn.addEventListener("click", resetGame);
+
     tweetBtn.addEventListener("click", () => {
-      const tweetURL = `https://twitter.com/intent/tweet?text=お口に指を入れるゲームに挑戦したよ！%20%23数寄屋橋れんげ`;
+      const tweetText = `お口に指を入れるゲームで${score}点をとったよ！ #数寄屋橋れんげ`;
+      const tweetURL = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
       window.open(tweetURL, "_blank");
     });
-
-    function isMobile() {
-      return /iPhone|Android|iPad/.test(navigator.userAgent);
-    }
 
     startBtn.addEventListener("click", () => {
       startBtn.style.display = "none";
