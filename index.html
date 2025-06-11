@@ -4,9 +4,13 @@
   <meta charset="UTF-8" />
   <title>指を入れるゲーム</title>
   <style>
-    body {
+    html, body {
       margin: 0;
+      padding: 0;
       overflow: hidden;
+      background: black;
+      width: 100%;
+      height: 100%;
     }
     canvas {
       display: block;
@@ -16,15 +20,16 @@
       top: 20px;
       left: 20px;
       color: white;
-      font-size: 24px;
+      font-size: 120px; /* ← 5倍に拡大 */
       font-family: sans-serif;
-      text-shadow: 2px 2px 4px black;
+      text-shadow: 4px 4px 8px black;
+      z-index: 10;
     }
   </style>
 </head>
 <body>
   <div id="score">スコア: 0</div>
-  <canvas id="gameCanvas" width="1920" height="1080"></canvas>
+  <canvas id="gameCanvas"></canvas>
   <audio id="bgm" src="bgm.mp3" loop></audio>
   <audio id="puni" src="puni.wav"></audio>
 
@@ -35,8 +40,7 @@
     const scoreElement = document.getElementById("score");
     const bgm = document.getElementById("bgm");
     const puni = document.getElementById("puni");
-    bgm.volume = 0.5;
-    bgm.play();
+    bgm.volume = 1.0;
 
     const images = {};
     const imageSources = {
@@ -50,12 +54,23 @@
     let gameOver = false;
     let isMouthOpen = true;
     let fingerX = 0;
-    let fingerY = 850;
+    let fingerYRatio = 0.78; // 背景比率に対して指のY位置（相対）
     let fingerDir = 4;
-    let fingerLifted = false;
-
     let mouthTimer = 0;
     const mouthInterval = 60;
+
+    const logicalWidth = 1920;
+    const logicalHeight = 1080;
+    let scale = 1;
+
+    function resizeCanvas() {
+      scale = window.innerWidth / logicalWidth;
+      canvas.width = window.innerWidth;
+      canvas.height = logicalHeight * scale;
+    }
+
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
 
     const loadImages = () => {
       return Promise.all(
@@ -77,12 +92,21 @@
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(images.back, 0, 0, canvas.width, canvas.height);
-      ctx.drawImage(isMouthOpen ? images.manOpen : images.manClose, 860, 300);
 
-      ctx.drawImage(images.finger, fingerX, fingerY);
+      const manX = 860 * scale;
+      const manY = 300 * scale;
+      const manW = images.manOpen.width * scale;
+      const manH = images.manOpen.height * scale;
+      ctx.drawImage(isMouthOpen ? images.manOpen : images.manClose, manX, manY, manW, manH);
+
+      const fingerY = canvas.height * fingerYRatio;
+      const fingerW = images.finger.width * scale;
+      const fingerH = images.finger.height * scale;
+
+      ctx.drawImage(images.finger, fingerX, fingerY, fingerW, fingerH);
 
       fingerX += fingerDir;
-      if (fingerX < 0 || fingerX + 100 > canvas.width) {
+      if (fingerX < 0 || fingerX + fingerW > canvas.width) {
         fingerDir *= -1;
       }
 
@@ -109,6 +133,11 @@
           scoreElement.textContent = "ゲームオーバー！ スコア: " + score;
         }
       }
+    });
+
+    // ユーザー操作後にBGMを再生（モバイルブラウザ対策）
+    window.addEventListener("click", () => {
+      if (bgm.paused) bgm.play();
     });
 
     loadImages().then(() => {
