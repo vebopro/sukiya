@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>指いれゲーム</title>
+  <style>
+    canvas { background: white; display: block; margin: 0 auto; }
+    body { text-align: center; font-family: sans-serif; }
+  </style>
+</head>
+<body>
+  <h1>口に指いれゲーム</h1>
+  <p>スペースキーでタイミングよく指を入れよう！</p>
+  <canvas id="gameCanvas" width="800" height="400"></canvas>
+  <p id="scoreText">スコア: 0</p>
+  <p id="gameOverText" style="color:red; font-size:24px;"></p>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const manOpenImg = new Image();
+    manOpenImg.src = "man_open.png";
+    const manCloseImg = new Image();
+    manCloseImg.src = "man_close.png";
+    const fingerImg = new Image();
+    fingerImg.src = "finger.png";
+
+    let mouthOpen = true;
+    let fingerX = 0;
+    let fingerY = 350;
+    let fingerSpeed = 3;
+    let direction = 1;
+    let fingerUp = false;
+    let score = 0;
+    let gameOver = false;
+
+    const updateMouth = () => {
+      mouthOpen = !mouthOpen;
+    };
+
+    setInterval(updateMouth, 1000); // 1秒ごとに口の開閉
+
+    const draw = () => {
+      if (gameOver) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const manImg = mouthOpen ? manOpenImg : manCloseImg;
+      ctx.drawImage(manImg, 300, 100, 200, 200); // 中央に表示
+
+      fingerX += fingerSpeed * direction;
+      if (fingerX <= 0 || fingerX + 50 >= canvas.width) direction *= -1;
+
+      ctx.drawImage(fingerImg, fingerX, fingerY, 50, 50);
+      requestAnimationFrame(draw);
+    };
+
+    const checkCollision = () => {
+      if (fingerX > 330 && fingerX < 470 && fingerY < 200) {
+        if (mouthOpen) {
+          score++;
+          document.getElementById("scoreText").textContent = `スコア: ${score}`;
+        } else {
+          document.getElementById("gameOverText").textContent = "ゲームオーバー！";
+          gameOver = true;
+        }
+      }
+    };
+
+    window.addEventListener("keydown", (e) => {
+      if (e.code === "Space" && !fingerUp && !gameOver) {
+        fingerUp = true;
+        const originalY = fingerY;
+        fingerY = 180; // 口に入る高さに移動
+        checkCollision();
+        setTimeout(() => {
+          fingerY = originalY;
+          fingerUp = false;
+        }, 300);
+      }
+    });
+
+    draw();
+  </script>
+</body>
+</html>
