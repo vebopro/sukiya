@@ -179,15 +179,20 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       const img = isMouthOpen ? images.open : images.close;
-      const imgWidth = canvas.width;
-      const imgHeight = img.height * (canvas.width / img.width);
-      ctx.drawImage(img, 0, 0, imgWidth, imgHeight);
 
-      fingerY = canvas.height * fingerYRatio;
-      const fingerWidth = images.finger.width * (canvas.width / images.open.width);
-      const fingerHeight = images.finger.height * (canvas.width / images.open.width);
+      const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+      const imgWidth = img.width * scale;
+      const imgHeight = img.height * scale;
+      const imgX = (canvas.width - imgWidth) / 2;
+      const imgY = (canvas.height - imgHeight) / 2;
+
+      ctx.drawImage(img, imgX, imgY, imgWidth, imgHeight);
+
+      fingerY = imgY + imgHeight * fingerYRatio;
+      const fingerWidth = images.finger.width * scale;
+      const fingerHeight = images.finger.height * scale;
       const offsetY = fingerLift ? -20 : 0;
-      ctx.drawImage(images.finger, 0, fingerY + offsetY, fingerWidth, fingerHeight);
+      ctx.drawImage(images.finger, imgX, fingerY + offsetY, fingerWidth, fingerHeight);
 
       mouthTimer++;
       if (mouthTimer >= mouthInterval) {
