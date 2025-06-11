@@ -96,11 +96,8 @@
   <button id="startButton">ゲームスタート</button>
   <canvas id="gameCanvas"></canvas>
 
-  <!-- SE/BGM プレースホルダ -->
   <audio id="puni" src="puni.wav"></audio>
-  <!-- BGMは後で動的に選択 -->
   <audio id="bgm" loop></audio>
-  <!-- ゲームオーバー音も動的 -->
 
   <script>
     const canvas = document.getElementById("gameCanvas");
@@ -125,10 +122,12 @@
     let fingerLift = false;
 
     const images = {};
+    const fingerImages = [];
+    let currentFinger = null;
+
     const sources = {
       open: "open.jpg",
-      close: "close.jpg",
-      finger: "finger.png"
+      close: "close.jpg"
     };
 
     const endSEList = [...Array(10)].map((_, i) => new Audio(`end${i + 1}.wav`));
@@ -143,32 +142,50 @@
     resizeCanvas();
 
     function loadImages() {
-      return Promise.all(
-        Object.entries(sources).map(([key, src]) => {
-          return new Promise(resolve => {
-            const img = new Image();
-            img.onload = () => {
-              images[key] = img;
-              resolve();
-            };
-            img.src = src;
-          });
-        })
-      );
+      const loadPromises = [];
+
+      // open/close
+      for (const [key, src] of Object.entries(sources)) {
+        const promise = new Promise(resolve => {
+          const img = new Image();
+          img.onload = () => {
+            images[key] = img;
+            resolve();
+          };
+          img.src = src;
+        });
+        loadPromises.push(promise);
+      }
+
+      // fingers
+      for (let i = 1; i <= 12; i++) {
+        const promise = new Promise(resolve => {
+          const img = new Image();
+          img.onload = () => {
+            fingerImages[i - 1] = img;
+            resolve();
+          };
+          img.src = `finger${i}.png`;
+        });
+        loadPromises.push(promise);
+      }
+
+      return Promise.all(loadPromises);
+    }
+
+    function selectFingerByProbability() {
+      const r = Math.random();
+      if (r < 0.6) return fingerImages[Math.floor(r * 4 / 0.6)]; // 0-3
+      if (r < 0.95) return fingerImages[4 + Math.floor((r - 0.6) * 7 / 0.35)]; // 4-10
+      return fingerImages[11]; // 12番目
     }
 
     function getRandomInterval() {
-      if (score >= 40) {
-        return 20 + Math.floor(Math.random() * 40); // ランダムな高速切替
-      } else if (score >= 30) {
-        return 24;
-      } else if (score >= 20) {
-        return 36;
-      } else if (score >= 10) {
-        return 48;
-      } else {
-        return 60; // 初期：1秒 (60fps前提)
-      }
+      if (score >= 40) return 20 + Math.floor(Math.random() * 40);
+      if (score >= 30) return 24;
+      if (score >= 20) return 36;
+      if (score >= 10) return 48;
+      return 60;
     }
 
     function playNextBGM() {
@@ -183,6 +200,7 @@
       isMouthOpen = true;
       mouthTimer = 0;
       mouthInterval = getRandomInterval();
+      currentFinger = selectFingerByProbability();
       scoreEl.textContent = "スコア: 0";
       result.style.display = "none";
       tapBtn.style.display = "block";
@@ -203,7 +221,9 @@
 
       ctx.drawImage(bg, imgX, imgY, imgWidth, imgHeight);
       const offsetY = fingerLift ? -20 : 0;
-      ctx.drawImage(images.finger, imgX, imgY + offsetY, imgWidth, imgHeight);
+      if (currentFinger) {
+        ctx.drawImage(currentFinger, imgX, imgY + offsetY, imgWidth, imgHeight);
+      }
 
       mouthTimer++;
       if (mouthTimer >= mouthInterval) {
@@ -220,6 +240,7 @@
       puni.currentTime = 0;
       puni.play();
       fingerLift = true;
+      currentFinger = selectFingerByProbability();
       setTimeout(() => fingerLift = false, 100);
 
       if (isMouthOpen) {
@@ -246,9 +267,8 @@
     });
     tapBtn.addEventListener("click", handleInput);
     retryBtn.addEventListener("click", resetGame);
-
     tweetBtn.addEventListener("click", () => {
-      const tweetText = `お口に指を入れるゲームで${score}点をとったよ！ #数寄屋橋れんげ`;
+      const tweetText = `#お口に指を入れるゲーム で${score}点をとったよ！ #renge_morinyan #新人Vtuber`;
       const tweetURL = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
       window.open(tweetURL, "_blank");
     });
