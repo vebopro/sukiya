@@ -1,86 +1,119 @@
-<!DOCTYPE html>
-<html>
+ï»¿<!DOCTYPE html>
+<html lang="ja">
 <head>
-  <meta charset="utf-8">
-  <title>w‚¢‚êƒQ[ƒ€</title>
+  <meta charset="UTF-8" />
+  <title>æŒ‡ã‚’å…¥ã‚Œã‚‹ã‚²ãƒ¼ãƒ </title>
   <style>
-    canvas { background: white; display: block; margin: 0 auto; }
-    body { text-align: center; font-family: sans-serif; }
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+    }
+    #score {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      color: white;
+      font-size: 24px;
+      font-family: sans-serif;
+      text-shadow: 2px 2px 4px black;
+    }
   </style>
 </head>
 <body>
-  <h1>Œû‚Éw‚¢‚êƒQ[ƒ€</h1>
-  <p>ƒXƒy[ƒXƒL[‚Åƒ^ƒCƒ~ƒ“ƒO‚æ‚­w‚ğ“ü‚ê‚æ‚¤I</p>
-  <canvas id="gameCanvas" width="800" height="400"></canvas>
-  <p id="scoreText">ƒXƒRƒA: 0</p>
-  <p id="gameOverText" style="color:red; font-size:24px;"></p>
+  <div id="score">ã‚¹ã‚³ã‚¢: 0</div>
+  <canvas id="gameCanvas" width="1920" height="1080"></canvas>
+  <audio id="bgm" src="bgm.mp3" loop></audio>
+  <audio id="puni" src="puni.wav"></audio>
 
   <script>
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
-    const manOpenImg = new Image();
-    manOpenImg.src = "man_open.png";
-    const manCloseImg = new Image();
-    manCloseImg.src = "man_close.png";
-    const fingerImg = new Image();
-    fingerImg.src = "finger.png";
+    const scoreElement = document.getElementById("score");
+    const bgm = document.getElementById("bgm");
+    const puni = document.getElementById("puni");
+    bgm.volume = 0.5;
+    bgm.play();
 
-    let mouthOpen = true;
-    let fingerX = 0;
-    let fingerY = 350;
-    let fingerSpeed = 3;
-    let direction = 1;
-    let fingerUp = false;
-    let score = 0;
-    let gameOver = false;
-
-    const updateMouth = () => {
-      mouthOpen = !mouthOpen;
+    const images = {};
+    const imageSources = {
+      back: "back.png",
+      manOpen: "man_open.png",
+      manClose: "man_close.png",
+      finger: "finger.png"
     };
 
-    setInterval(updateMouth, 1000); // 1•b‚²‚Æ‚ÉŒû‚ÌŠJ•Â
+    let score = 0;
+    let gameOver = false;
+    let isMouthOpen = true;
+    let fingerX = 0;
+    let fingerY = 850;
+    let fingerDir = 4;
+    let fingerLifted = false;
+
+    let mouthTimer = 0;
+    const mouthInterval = 60;
+
+    const loadImages = () => {
+      return Promise.all(
+        Object.entries(imageSources).map(([key, src]) => {
+          return new Promise(resolve => {
+            const img = new Image();
+            img.onload = () => {
+              images[key] = img;
+              resolve();
+            };
+            img.src = src;
+          });
+        })
+      );
+    };
 
     const draw = () => {
       if (gameOver) return;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const manImg = mouthOpen ? manOpenImg : manCloseImg;
-      ctx.drawImage(manImg, 300, 100, 200, 200); // ’†‰›‚É•\¦
+      ctx.drawImage(images.back, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(isMouthOpen ? images.manOpen : images.manClose, 860, 300);
 
-      fingerX += fingerSpeed * direction;
-      if (fingerX <= 0 || fingerX + 50 >= canvas.width) direction *= -1;
+      ctx.drawImage(images.finger, fingerX, fingerY);
 
-      ctx.drawImage(fingerImg, fingerX, fingerY, 50, 50);
+      fingerX += fingerDir;
+      if (fingerX < 0 || fingerX + 100 > canvas.width) {
+        fingerDir *= -1;
+      }
+
+      mouthTimer++;
+      if (mouthTimer >= mouthInterval) {
+        isMouthOpen = !isMouthOpen;
+        mouthTimer = 0;
+      }
+
       requestAnimationFrame(draw);
     };
 
-    const checkCollision = () => {
-      if (fingerX > 330 && fingerX < 470 && fingerY < 200) {
-        if (mouthOpen) {
-          score++;
-          document.getElementById("scoreText").textContent = `ƒXƒRƒA: ${score}`;
-        } else {
-          document.getElementById("gameOverText").textContent = "ƒQ[ƒ€ƒI[ƒo[I";
-          gameOver = true;
-        }
-      }
-    };
-
     window.addEventListener("keydown", (e) => {
-      if (e.code === "Space" && !fingerUp && !gameOver) {
-        fingerUp = true;
-        const originalY = fingerY;
-        fingerY = 180; // Œû‚É“ü‚é‚‚³‚ÉˆÚ“®
-        checkCollision();
-        setTimeout(() => {
-          fingerY = originalY;
-          fingerUp = false;
-        }, 300);
+      if (gameOver) return;
+      if (e.code === "Space") {
+        puni.currentTime = 0;
+        puni.play();
+
+        if (isMouthOpen) {
+          score++;
+          scoreElement.textContent = "ã‚¹ã‚³ã‚¢: " + score;
+        } else {
+          gameOver = true;
+          scoreElement.textContent = "ã‚²ãƒ¼ãƒ ã‚ªãƒ¼ãƒãƒ¼ï¼ ã‚¹ã‚³ã‚¢: " + score;
+        }
       }
     });
 
-    draw();
+    loadImages().then(() => {
+      draw();
+    });
   </script>
 </body>
 </html>
