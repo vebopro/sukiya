@@ -14,28 +14,25 @@
     }
     canvas {
       display: block;
-      margin: 0 auto;
-      background: black;
+      width: 100vw;
+      height: 100vh;
     }
-    #score {
+    #score, #highScore {
       position: absolute;
-      top: 20px;
       left: 20px;
       color: white;
-      font-size: 120px;
-      font-family: sans-serif;
-      text-shadow: 4px 4px 8px black;
-      z-index: 10;
-    }
-    #highScore {
-      position: absolute;
-      top: 160px;
-      left: 20px;
-      color: yellow;
-      font-size: 60px;
       font-family: sans-serif;
       text-shadow: 2px 2px 4px black;
       z-index: 10;
+    }
+    #score {
+      top: 20px;
+      font-size: 60px;
+    }
+    #highScore {
+      top: 100px;
+      font-size: 40px;
+      color: yellow;
     }
     #result {
       display: none;
@@ -46,20 +43,26 @@
       height: 100%;
       background: rgba(0,0,0,0.9);
       color: white;
-      font-size: 60px;
+      font-size: 50px;
       text-align: center;
-      padding-top: 200px;
+      padding-top: 300px;
       z-index: 20;
     }
-    #tweetBtn {
+    #tweetBtn, #retryBtn {
       font-size: 30px;
-      margin-top: 20px;
+      margin: 20px;
       padding: 10px 30px;
-      background: #1DA1F2;
       border: none;
-      color: white;
       border-radius: 10px;
       cursor: pointer;
+    }
+    #tweetBtn {
+      background: #1DA1F2;
+      color: white;
+    }
+    #retryBtn {
+      background: #4CAF50;
+      color: white;
     }
     #tapButton {
       display: none;
@@ -81,11 +84,12 @@
   <div id="result">
     <div id="finalScore"></div>
     <button id="tweetBtn">スコアをXに投稿</button>
+    <button id="retryBtn">もう一度挑戦</button>
   </div>
   <div id="tapButton">指を入れる！</div>
-  <canvas id="gameCanvas" width="720" height="1280"></canvas>
+  <canvas id="gameCanvas"></canvas>
 
-  <audio id="bgm" src="bgm.mp3" loop></audio>
+  <audio id="bgm" src="bgm.mp3" loop autoplay></audio>
   <audio id="puni" src="puni.wav"></audio>
   <audio id="end" src="end.wav"></audio>
 
@@ -100,16 +104,14 @@
     const result = document.getElementById("result");
     const finalScore = document.getElementById("finalScore");
     const tweetBtn = document.getElementById("tweetBtn");
+    const retryBtn = document.getElementById("retryBtn");
     const tapButton = document.getElementById("tapButton");
 
-    bgm.volume = 1.0;
-
-    // 画像と初期位置の定義（縦サイズを基準に縮小）
     const images = {};
     const imageSources = {
       back: "back.png",
-      manOpen: "man_open.png",
-      manClose: "man_close.png",
+      open: "open.jpg",
+      close: "close.jpg",
       finger: "finger.png"
     };
 
@@ -117,34 +119,16 @@
     let highScore = Number(localStorage.getItem("highScore") || 0);
     let gameOver = false;
     let isMouthOpen = true;
-
-    // 指のY位置（上下トグル）
-    // 初期位置は画像の高さとcanvas高さから算出
-    let fingerAtTop = false;
-
-    // 画像の配置座標（画像によって違うので仮に設定。あとで画像に合わせて調整）
-    // canvasサイズは固定720x1280縦長
-    const canvasWidth = 720;
-    const canvasHeight = 1280;
-
-    // 背景はcanvasいっぱい（720x1280にフィット）
-    // man画像はcanvas中央より少し上の位置に配置
-    // finger画像はman画像の口のあたりに配置（X固定、Y上下トグル）
+    let fingerYRatio = 0.78;
+    let fingerJump = false;
+    let scale = 1;
 
     highScoreElement.textContent = "ハイスコア: " + highScore;
 
-    // 指の初期X,Y（横方向固定中央付近）
-    const fingerInitialX = (canvasWidth - 100) / 2; // finger幅仮100px想定
-    let fingerY;
-
-    // 画像縮小率は画面高さ基準（画像の高さに合わせて縮小）
-    // それぞれの画像読み込み後にサイズ調整のため利用
-
     const resizeCanvas = () => {
-      // canvasは固定720x1280縦長なのでここではサイズ変更しない
-      // 画面の高さに合わせてcanvasをCSSで拡大縮小したい場合はここで調整可能
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
     };
-
     window.addEventListener("resize", resizeCanvas);
     resizeCanvas();
 
@@ -163,81 +147,62 @@
       );
     };
 
-    // 画像の縦サイズをcanvas高さ1280に合わせて縮小率計算しつつ
-    // それぞれの表示位置をセット
-    let backScale, manScale, fingerScale;
-    let backPos = {x: 0, y: 0};
-    let manPos = {x: 0, y: 0};
-    let fingerPos = {x: 0, y: 0};
-
-    const setupPositionsAndScale = () => {
-      // 背景はcanvas全体に伸ばす
-      backScale = canvasHeight / images.back.height;
-      backPos = {x: 0, y: 0};
-
-      // man画像はcanvas中央上付近に配置
-      manScale = canvasHeight / images.manOpen.height * 0.8; // 少し縮小気味に
-      manPos.x = (canvasWidth - images.manOpen.width * manScale) / 2;
-      manPos.y = canvasHeight * 0.15;
-
-      // finger画像はmanの口の位置に合わせる
-      fingerScale = canvasHeight / images.finger.height * 0.35; // 小さめ
-      fingerPos.x = (canvasWidth - images.finger.width * fingerScale) / 2;
-
-      // fingerのY初期位置（口の下くらいに）
-      fingerY = manPos.y + images.manOpen.height * manScale * 0.75;
-      fingerPos.y = fingerY;
-    };
-
-    const resetFingerPosition = () => {
-      fingerAtTop = false;
-      fingerPos.y = fingerY;
-    };
-
     const resetGame = () => {
       score = 0;
       gameOver = false;
       isMouthOpen = true;
-      resetFingerPosition();
+      fingerJump = false;
       scoreElement.textContent = "スコア: 0";
       result.style.display = "none";
       tapButton.style.display = isMobile() ? "block" : "none";
       bgm.currentTime = 0;
-      if (bgm.paused) bgm.play();
+      bgm.play();
+      startMouthLoop();
       draw();
     };
 
+    let mouthIntervalId = null;
+    const startMouthLoop = () => {
+      clearInterval(mouthIntervalId);
+      mouthIntervalId = setInterval(() => {
+        if (!gameOver) {
+          isMouthOpen = !isMouthOpen;
+        }
+      }, 1000 + Math.random() * 1000); // ランダム間隔（1?2秒）
+    };
+
     const draw = () => {
-      if (gameOver) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(images.back, 0, 0, canvas.width, canvas.height);
 
-      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+      scale = canvas.width / 720;
 
-      // 背景描画
-      ctx.drawImage(images.back, backPos.x, backPos.y, images.back.width * backScale, images.back.height * backScale);
+      const manW = 500 * scale;
+      const manH = 500 * scale;
+      const manX = (canvas.width - manW) / 2;
+      const manY = 300 * scale;
+      ctx.drawImage(isMouthOpen ? images.open : images.close, manX, manY, manW, manH);
 
-      // man画像描画（口が開いているか閉じているか）
-      ctx.drawImage(isMouthOpen ? images.manOpen : images.manClose, manPos.x, manPos.y, images.manOpen.width * manScale, images.manOpen.height * manScale);
+      const fingerW = 100 * scale;
+      const fingerH = 200 * scale;
+      const fingerX = (canvas.width - fingerW) / 2;
+      const baseY = canvas.height * fingerYRatio;
+      const fingerY = fingerJump ? baseY - 20 : baseY;
+      ctx.drawImage(images.finger, fingerX, fingerY, fingerW, fingerH);
 
-      // finger画像描画（上下トグル）
-      ctx.drawImage(images.finger, fingerPos.x, fingerPos.y, images.finger.width * fingerScale, images.finger.height * fingerScale);
-
-      requestAnimationFrame(draw);
+      if (!gameOver) {
+        requestAnimationFrame(draw);
+      }
     };
 
     const handleInput = () => {
       if (gameOver) return;
       puni.currentTime = 0;
       puni.play();
-
-      // 指を上下トグル
-      if (fingerAtTop) {
-        // 上にあれば戻す
-        resetFingerPosition();
-      } else {
-        // 下にあれば上に移動（manの口の少し上あたりに）
-        fingerAtTop = true;
-        fingerPos.y = manPos.y + images.manOpen.height * manScale * 0.55;
-      }
+      fingerJump = true;
+      setTimeout(() => {
+        fingerJump = false;
+      }, 100);
 
       if (isMouthOpen) {
         score++;
@@ -260,10 +225,6 @@
         };
         result.style.display = "block";
         tapButton.style.display = "none";
-
-        setTimeout(() => {
-          resetGame();
-        }, 2000);
       }
     };
 
@@ -271,18 +232,18 @@
       if (e.code === "Space") handleInput();
     });
 
+    tapButton.addEventListener("click", handleInput);
+    retryBtn.addEventListener("click", resetGame);
+
     window.addEventListener("touchstart", () => {
       if (bgm.paused) bgm.play();
     });
 
-    tapButton.addEventListener("click", handleInput);
-
     const isMobile = () => /iPhone|Android|iPad/.test(navigator.userAgent);
 
     loadImages().then(() => {
-      setupPositionsAndScale();
       if (isMobile()) tapButton.style.display = "block";
-      bgm.play(); // ページロード時にBGM再生
+      startMouthLoop();
       draw();
     });
   </script>
