@@ -14,6 +14,8 @@
     }
     canvas {
       display: block;
+      margin: 0 auto;
+      background: black;
     }
     #score {
       position: absolute;
@@ -81,7 +83,7 @@
     <button id="tweetBtn">スコアをXに投稿</button>
   </div>
   <div id="tapButton">指を入れる！</div>
-  <canvas id="gameCanvas"></canvas>
+  <canvas id="gameCanvas" width="720" height="1280"></canvas>
 
   <audio id="bgm" src="bgm.mp3" loop></audio>
   <audio id="puni" src="puni.wav"></audio>
@@ -114,21 +116,30 @@
     let highScore = Number(localStorage.getItem("highScore") || 0);
     let gameOver = false;
     let isMouthOpen = true;
-    let fingerX = 0;
-    let fingerYRatio = 0.78;
-    let fingerDir = 4;
+
+    // 指の位置をX固定、Yを上下移動に変更
+    const fingerX = canvas.width / 2 - 50; // 指の画像幅想定で中央寄せ調整
+    let fingerY = canvas.height * 0.78;
+    let fingerMoveUp = true; // 上下切替用フラグ
+    const fingerMoveStep = 30; // スペースで上下に動くピクセル量
+    const fingerMinY = 100; // 指の上下移動範囲最小Y座標
+    const fingerMaxY = canvas.height - 200; // 最大Y座標
+
     let mouthTimer = 0;
     const mouthInterval = 60;
-    let scale = 1;
+    let scale = canvas.width / 1920; // 元サイズ基準のスケール
 
     highScoreElement.textContent = "ハイスコア: " + highScore;
 
+    // リサイズ無効にし、固定サイズにするのでコメントアウト
+    /*
     const resizeCanvas = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
     };
-    window.addEventListener("resize", resizeCanvas);
-    resizeCanvas();
+    window.removeEventListener("resize", resizeCanvas);
+    //resizeCanvas();
+    */
 
     const loadImages = () => {
       return Promise.all(
@@ -149,9 +160,7 @@
       score = 0;
       gameOver = false;
       isMouthOpen = true;
-      fingerX = 0;
-      fingerDir = 4;
-      mouthTimer = 0;
+      fingerY = canvas.height * 0.78;
       scoreElement.textContent = "スコア: 0";
       result.style.display = "none";
       tapButton.style.display = isMobile() ? "block" : "none";
@@ -166,6 +175,7 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(images.back, 0, 0, canvas.width, canvas.height);
 
+      // manの描画位置・サイズ（スケールをcanvas幅720基準に変更）
       scale = canvas.width / 1920;
 
       const manX = 860 * scale;
@@ -174,20 +184,20 @@
       const manH = images.manOpen.height * scale;
       ctx.drawImage(isMouthOpen ? images.manOpen : images.manClose, manX, manY, manW, manH);
 
-      const fingerY = canvas.height * fingerYRatio;
+      // 指の描画はX固定、YはfingerY
       const fingerW = images.finger.width * scale;
       const fingerH = images.finger.height * scale;
       ctx.drawImage(images.finger, fingerX, fingerY, fingerW, fingerH);
 
+      // 指の左右移動はなし（コメントアウト）
+      /*
       fingerX += fingerDir;
-
-      // 難易度上昇（最大速度12）
       const speed = Math.min(4 + Math.floor(score / 5), 12);
       fingerDir = fingerDir > 0 ? speed : -speed;
-
       if (fingerX < 0 || fingerX + fingerW > canvas.width) {
         fingerDir *= -1;
       }
+      */
 
       mouthTimer++;
       if (mouthTimer >= mouthInterval) {
@@ -202,6 +212,21 @@
       if (gameOver) return;
       puni.currentTime = 0;
       puni.play();
+
+      // 指のY座標をスペースで上下反転移動
+      if (fingerMoveUp) {
+        fingerY -= fingerMoveStep;
+        if (fingerY < fingerMinY) {
+          fingerY = fingerMinY;
+          fingerMoveUp = false;
+        }
+      } else {
+        fingerY += fingerMoveStep;
+        if (fingerY > fingerMaxY) {
+          fingerY = fingerMaxY;
+          fingerMoveUp = true;
+        }
+      }
 
       if (isMouthOpen) {
         score++;
