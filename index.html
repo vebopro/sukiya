@@ -98,6 +98,7 @@
 
   <audio id="puni" src="puni.wav"></audio>
   <audio id="bgm" loop></audio>
+  <audio id="akubiAudio" src="akubi.mp3"></audio>
 
   <script>
     const canvas = document.getElementById("gameCanvas");
@@ -112,6 +113,7 @@
     const startBtn = document.getElementById("startButton");
     const puni = document.getElementById("puni");
     const bgm = document.getElementById("bgm");
+    const akubiAudio = document.getElementById("akubiAudio");
 
     let score = 0;
     let highScore = Number(localStorage.getItem("highScore") || 0);
@@ -121,10 +123,12 @@
     let gameOver = false;
     let fingerLift = false;
     let selectedFinger = null;
+    let isBonusTime = false;
+    let akubiTimeout = null;
 
     const images = {};
     const fingerImages = [];
-    const sources = { open: "open.jpg", close: "close.jpg" };
+    const sources = { open: "open.jpg", close: "close.jpg", akubi: "akubi.jpg" };
 
     const endSEList = [...Array(10)].map((_, i) => new Audio(`end${i + 1}.wav`));
     const bgmList = ["bgm1.mp3", "bgm2.mp3", "bgm3.mp3", "bgm4.mp3"];
@@ -167,17 +171,38 @@
     }
 
     function getRandomInterval() {
-      if (score >= 40) return 20 + Math.floor(Math.random() * 40);
-      if (score >= 30) return 24;
-      if (score >= 20) return 36;
-      if (score >= 10) return 48;
-      return 60;
+      const minFrames = 30; // 0.5秒（60fpsのとき）
+      if (score >= 40) return Math.max(20, minFrames);
+      if (score >= 30) return Math.max(24, minFrames);
+      if (score >= 20) return Math.max(36, minFrames);
+      if (score >= 10) return Math.max(48, minFrames);
+      return Math.max(60, minFrames);
     }
 
     function playNextBGM() {
       bgm.src = bgmList[bgmIndex];
       bgm.play();
       bgmIndex = (bgmIndex + 1) % bgmList.length;
+    }
+
+    function scheduleAkubi() {
+      const interval = 30000 + Math.random() * 30000;
+      akubiTimeout = setTimeout(() => {
+        triggerAkubi();
+        scheduleAkubi();
+      }, interval);
+    }
+
+    function triggerAkubi() {
+      isBonusTime = true;
+      bgm.pause();
+      akubiAudio.currentTime = 0;
+      akubiAudio.play();
+
+      akubiAudio.onended = () => {
+        isBonusTime = false;
+        playNextBGM();
+      };
     }
 
     function resetGame() {
@@ -191,6 +216,7 @@
       result.style.display = "none";
       tapBtn.style.display = "block";
       playNextBGM();
+      scheduleAkubi();
       draw();
     }
 
@@ -198,7 +224,7 @@
       if (gameOver) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      const bg = isMouthOpen ? images.open : images.close;
+      const bg = isBonusTime ? images.akubi : (isMouthOpen ? images.open : images.close);
       const scale = Math.min(canvas.width / bg.width, canvas.height / bg.height);
       const imgW = bg.width * scale;
       const imgH = bg.height * scale;
@@ -211,11 +237,13 @@
         ctx.drawImage(selectedFinger, imgX, imgY + offsetY, imgW, imgH);
       }
 
-      mouthTimer++;
-      if (mouthTimer >= mouthInterval) {
-        isMouthOpen = !isMouthOpen;
-        mouthTimer = 0;
-        mouthInterval = getRandomInterval();
+      if (!isBonusTime) {
+        mouthTimer++;
+        if (mouthTimer >= mouthInterval) {
+          isMouthOpen = !isMouthOpen;
+          mouthTimer = 0;
+          mouthInterval = getRandomInterval();
+        }
       }
 
       requestAnimationFrame(draw);
@@ -228,7 +256,7 @@
       fingerLift = true;
       setTimeout(() => fingerLift = false, 100);
 
-      if (isMouthOpen) {
+      if (isMouthOpen || isBonusTime) {
         score++;
         scoreEl.textContent = "スコア: " + score;
         if (score > highScore) {
@@ -239,6 +267,8 @@
       } else {
         gameOver = true;
         bgm.pause();
+        akubiAudio.pause();
+        clearTimeout(akubiTimeout);
         const endSE = endSEList[Math.floor(Math.random() * endSEList.length)];
         endSE.currentTime = 0;
         endSE.play();
@@ -253,7 +283,7 @@
     tapBtn.addEventListener("click", handleInput);
     retryBtn.addEventListener("click", resetGame);
     tweetBtn.addEventListener("click", () => {
-      const tweetText = `お口に指を入れるゲームで${score}点をとったよ！ #数寄屋橋れんげ`;
+      const tweetText = `#お口に指を入れるゲーム で${score}点をとったよ！ #renge_morinyan`;
       const tweetURL = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
       window.open(tweetURL, "_blank");
     });
