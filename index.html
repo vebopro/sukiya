@@ -196,19 +196,16 @@
     }
 
 function getRandomInterval() {
-  const fps = 60;
-
-  const baseCycle = Math.floor(score / 70);
-  const withinCycleScore = score % 70;
+  const fps = 60; // フレームレート（1秒 = 60フレーム）
+  const withinCycle = score % 60;
 
   let seconds;
-  if (withinCycleScore < 10) seconds = 1.0;
-  else if (withinCycleScore < 20) seconds = 0.9;
-  else if (withinCycleScore < 30) seconds = 0.8;
-  else if (withinCycleScore < 40) seconds = 0.7;
-  else if (withinCycleScore < 50) seconds = 0.6;
-  else if (withinCycleScore < 60) seconds = 0.5;
-  else seconds = 0.4;
+  if (withinCycle < 10) seconds = 1.0;
+  else if (withinCycle < 20) seconds = 0.9;
+  else if (withinCycle < 30) seconds = 0.8;
+  else if (withinCycle < 40) seconds = 0.7;
+  else if (withinCycle < 50) seconds = 0.6;
+  else seconds = 0.5; // 50?59点まで
 
   return Math.floor(seconds * fps);
 }
@@ -242,11 +239,13 @@ function getRandomInterval() {
       akubiAudio.currentTime = 0;
       akubiAudio.play();
 
-      akubiAudio.onended = () => {
-        isBonusTime = false;
-        playNextBGM();
-      };
-    }
+akubiAudio.onended = () => {
+  isBonusTime = false;
+  isMouthOpen = true; // ← 必ず open.jpg にする
+  mouthTimer = 0;
+  mouthInterval = 60; // ← 開閉間隔を1秒にリセット
+  playNextBGM();
+};
 
     function resetGame() {
       score = 0;
