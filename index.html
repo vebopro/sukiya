@@ -82,6 +82,27 @@
       left: 50%;
       transform: translate(-50%, -50%);
     }
+#rainbowOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 15;
+  mix-blend-mode: screen;
+  opacity: 0;
+  background: linear-gradient(45deg, red, orange, yellow, green, cyan, blue, violet, red);
+  background-size: 400% 400%;
+  animation: rainbowGlow 5s linear infinite;
+  transition: opacity 0.5s ease;
+}
+
+@keyframes rainbowGlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
   </style>
 </head>
 <body>
@@ -95,10 +116,10 @@
   <button id="tapButton">指を入れる！</button>
   <button id="startButton">ゲームスタート</button>
   <canvas id="gameCanvas"></canvas>
+<div id="rainbowOverlay"></div>
 
   <audio id="puni" src="puni.wav"></audio>
   <audio id="bgm" loop></audio>
-  <audio id="akubiAudio" src="akubi.mp3"></audio>
 
   <script>
     const canvas = document.getElementById("gameCanvas");
@@ -113,7 +134,6 @@
     const startBtn = document.getElementById("startButton");
     const puni = document.getElementById("puni");
     const bgm = document.getElementById("bgm");
-    const akubiAudio = document.getElementById("akubiAudio");
 
     let score = 0;
     let highScore = Number(localStorage.getItem("highScore") || 0);
@@ -124,13 +144,18 @@
     let fingerLift = false;
     let selectedFinger = null;
     let isBonusTime = false;
+    let currentAkubiIndex = 1;
     let akubiTimeout = null;
 
     const images = {};
     const fingerImages = [];
-    const sources = { open: "open.jpg", close: "close.jpg", akubi: "akubi.jpg" };
+    const sources = { open: "open.jpg", close: "close.jpg" };
+    for (let i = 1; i <= 6; i++) {
+      sources[`akubi${i}`] = `akubi${i}.jpg`;
+    }
 
-    const endSEList = [...Array(10)].map((_, i) => new Audio(`end${i + 1}.wav`));
+    const endSEList = [...Array(15)].map((_, i) => new Audio(`end${i + 1}.mp3`));
+    const akubiAudioList = [...Array(6)].map((_, i) => new Audio(`akubi${i + 1}.mp3`));
     const bgmList = ["bgm1.mp3", "bgm2.mp3", "bgm3.mp3", "bgm4.mp3"];
     let bgmIndex = 0;
 
@@ -171,7 +196,7 @@
     }
 
     function getRandomInterval() {
-      const minFrames = 30; // 0.5秒（60fpsのとき）
+      const minFrames = 30; // 0.5秒（@60fps）
       if (score >= 40) return Math.max(20, minFrames);
       if (score >= 30) return Math.max(24, minFrames);
       if (score >= 20) return Math.max(36, minFrames);
@@ -196,6 +221,15 @@
     function triggerAkubi() {
       isBonusTime = true;
       bgm.pause();
+
+      const r = Math.random();
+      if (r < 0.95) {
+        currentAkubiIndex = Math.floor(Math.random() * 4) + 1;
+      } else {
+        currentAkubiIndex = 5 + Math.floor(Math.random() * 2);
+      }
+
+      const akubiAudio = akubiAudioList[currentAkubiIndex - 1];
       akubiAudio.currentTime = 0;
       akubiAudio.play();
 
@@ -224,7 +258,10 @@
       if (gameOver) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      const bg = isBonusTime ? images.akubi : (isMouthOpen ? images.open : images.close);
+      const bg = isBonusTime
+        ? images[`akubi${currentAkubiIndex}`]
+        : (isMouthOpen ? images.open : images.close);
+
       const scale = Math.min(canvas.width / bg.width, canvas.height / bg.height);
       const imgW = bg.width * scale;
       const imgH = bg.height * scale;
@@ -245,6 +282,7 @@
           mouthInterval = getRandomInterval();
         }
       }
+      document.getElementById("rainbowOverlay").style.opacity = isBonusTime ? "0.4" : "0";
 
       requestAnimationFrame(draw);
     }
@@ -267,7 +305,7 @@
       } else {
         gameOver = true;
         bgm.pause();
-        akubiAudio.pause();
+        akubiAudioList.forEach(a => a.pause());
         clearTimeout(akubiTimeout);
         const endSE = endSEList[Math.floor(Math.random() * endSEList.length)];
         endSE.currentTime = 0;
@@ -295,6 +333,15 @@
         resetGame();
       });
     });
+// Service Worker 登録
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js')
+      .then(reg => console.log('Service Worker registered:', reg.scope))
+      .catch(err => console.error('Service Worker registration failed:', err));
+  });
+}
+
   </script>
 </body>
 </html>
