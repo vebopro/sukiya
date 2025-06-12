@@ -216,17 +216,21 @@
       bgmIndex = (bgmIndex + 1) % bgmList.length;
     }
 
-    function scheduleAkubi() {
-      clearTimeout(akubiTimeout);
-      const interval = 30000 + Math.random() * 30000;
-      akubiTimeout = setTimeout(() => {
-        const now = Date.now();
-        if (now - lastScoreTime <= 10000) {
-          triggerAkubi();
-        }
-      }, interval);
-    }
+function scheduleAkubi() {
+  clearTimeout(akubiTimeout);
+  const interval = 30000 + Math.random() * 30000;
 
+  akubiTimeout = setTimeout(() => {
+    const now = Date.now();
+    if (now - lastScoreTime <= 10000) {
+      triggerAkubi();
+    } else {
+      // ?? スキップした場合でも、再スケジュールする！
+      console.log("スコア放置によりボーナスタイムスキップ → 再スケジュール");
+      scheduleAkubi(); // ← 再予約！
+    }
+  }, interval);
+}
 function triggerAkubi() {
   isBonusTime = true;
   bgm.pause();
