@@ -227,37 +227,47 @@
       }, interval);
     }
 
-    function triggerAkubi() {
-      isBonusTime = true;
-      bgm.pause();
-      const r = Math.random();
-      currentAkubiIndex = (r < 0.95) ? Math.floor(Math.random() * 4) + 1 : 5 + Math.floor(Math.random() * 2);
-      const akubiAudio = akubiAudioList[currentAkubiIndex - 1];
-      akubiAudio.currentTime = 0;
-      akubiAudio.play();
-      akubiAudio.onended = () => {
-        isBonusTime = false;
-        isMouthOpen = true;
-        mouthTimer = 0;
-        mouthInterval = 60;
-        playNextBGM();
-      };
-    }
+function triggerAkubi() {
+  isBonusTime = true;
+  bgm.pause();
 
-    function resetGame() {
-      score = 0;
-      gameOver = false;
-      isMouthOpen = true;
-      mouthTimer = 0;
-      mouthInterval = getRandomInterval();
-      selectedFinger = selectFingerByProbability();
-      scoreEl.textContent = "スコア: 0";
-      result.style.display = "none";
-      tapBtn.style.display = "block";
-      playNextBGM();
-      scheduleAkubi();
-      draw();
-    }
+  const r = Math.random();
+  currentAkubiIndex = (r < 0.95) 
+    ? Math.floor(Math.random() * 4) + 1 
+    : 5 + Math.floor(Math.random() * 2);
+
+  const akubiAudio = akubiAudioList[currentAkubiIndex - 1];
+  akubiAudio.currentTime = 0;
+  akubiAudio.play();
+
+  akubiAudio.onended = () => {
+    isBonusTime = false;
+    isMouthOpen = true;
+    mouthTimer = 0;
+    mouthInterval = 60;
+    playNextBGM();
+
+    scheduleAkubi(); // ← 追加：ボーナスタイム終了後に次のタイマーを再設定
+  };
+}
+
+function resetGame() {
+  score = 0;
+  gameOver = false;
+  isMouthOpen = true;
+  mouthTimer = 0;
+  mouthInterval = getRandomInterval();
+  selectedFinger = selectFingerByProbability();
+  scoreEl.textContent = "スコア: 0";
+  result.style.display = "none";
+  tapBtn.style.display = "block";
+
+  lastScoreTime = Date.now(); // ← 追加：スコアタイムを初期化（重要）
+
+  playNextBGM();
+  scheduleAkubi();
+  draw();
+}
 
     function draw() {
       if (gameOver) return;
