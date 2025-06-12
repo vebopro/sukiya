@@ -195,14 +195,23 @@
       return fingerImages[11];
     }
 
-    function getRandomInterval() {
-      const minFrames = 30; // 0.5秒（@60fps）
-      if (score >= 40) return Math.max(20, minFrames);
-      if (score >= 30) return Math.max(24, minFrames);
-      if (score >= 20) return Math.max(36, minFrames);
-      if (score >= 10) return Math.max(48, minFrames);
-      return Math.max(60, minFrames);
-    }
+function getRandomInterval() {
+  const fps = 60;
+
+  const baseCycle = Math.floor(score / 70);
+  const withinCycleScore = score % 70;
+
+  let seconds;
+  if (withinCycleScore < 10) seconds = 1.0;
+  else if (withinCycleScore < 20) seconds = 0.9;
+  else if (withinCycleScore < 30) seconds = 0.8;
+  else if (withinCycleScore < 40) seconds = 0.7;
+  else if (withinCycleScore < 50) seconds = 0.6;
+  else if (withinCycleScore < 60) seconds = 0.5;
+  else seconds = 0.4;
+
+  return Math.floor(seconds * fps);
+}
 
     function playNextBGM() {
       bgm.src = bgmList[bgmIndex];
