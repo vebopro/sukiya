@@ -297,35 +297,35 @@ function resetGame() {
       requestAnimationFrame(draw);
     }
 
-    function handleInput() {
-      if (gameOver) return;
-      puni.currentTime = 0;
-      puni.play();
-      fingerLift = true;
-      setTimeout(() => fingerLift = false, 100);
+function handleInput() {
+  if (gameOver) return;
+  puni.currentTime = 0;
+  puni.play();
+  fingerLift = true;
+  setTimeout(() => fingerLift = false, 100);
 
-      if (isMouthOpen || isBonusTime) {
-        score++;
-        lastScoreTime = Date.now();
-        scoreEl.textContent = "スコア: " + score;
-        if (score > highScore) {
-          highScore = score;
-          localStorage.setItem("highScore", highScore);
-          highScoreEl.textContent = "ハイスコア: " + highScore;
-        }
-        scheduleAkubi();
-      } else {
-        gameOver = true;
-        bgm.pause();
-        akubiAudioList.forEach(a => a.pause());
-        clearTimeout(akubiTimeout);
-        const endSE = endSEList[Math.floor(Math.random() * endSEList.length)];
-        endSE.currentTime = 0;
-        endSE.play();
-        finalScore.textContent = `スコア: ${score}`;
-        result.style.display = "block";
-      }
+  if (isMouthOpen || isBonusTime) {
+    score++;
+    lastScoreTime = Date.now(); // スコアが入ったタイミングを更新
+    scoreEl.textContent = "スコア: " + score;
+    if (score > highScore) {
+      highScore = score;
+      localStorage.setItem("highScore", highScore);
+      highScoreEl.textContent = "ハイスコア: " + highScore;
     }
+
+  } else {
+    gameOver = true;
+    bgm.pause();
+    akubiAudioList.forEach(a => a.pause());
+    clearTimeout(akubiTimeout);
+    const endSE = endSEList[Math.floor(Math.random() * endSEList.length)];
+    endSE.currentTime = 0;
+    endSE.play();
+    finalScore.textContent = `スコア: ${score}`;
+    result.style.display = "block";
+  }
+}
 
     window.addEventListener("keydown", e => {
       if (e.code === "Space") handleInput();
