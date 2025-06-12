@@ -224,28 +224,29 @@ function getRandomInterval() {
       }, interval);
     }
 
-    function triggerAkubi() {
-      isBonusTime = true;
-      bgm.pause();
+function triggerAkubi() {
+  isBonusTime = true;
+  bgm.pause();
 
-      const r = Math.random();
-      if (r < 0.95) {
-        currentAkubiIndex = Math.floor(Math.random() * 4) + 1;
-      } else {
-        currentAkubiIndex = 5 + Math.floor(Math.random() * 2);
-      }
+  const r = Math.random();
+  if (r < 0.95) {
+    currentAkubiIndex = Math.floor(Math.random() * 4) + 1;
+  } else {
+    currentAkubiIndex = 5 + Math.floor(Math.random() * 2);
+  }
 
-      const akubiAudio = akubiAudioList[currentAkubiIndex - 1];
-      akubiAudio.currentTime = 0;
-      akubiAudio.play();
+  const akubiAudio = akubiAudioList[currentAkubiIndex - 1];
+  akubiAudio.currentTime = 0;
+  akubiAudio.play();
 
-akubiAudio.onended = () => {
-  isBonusTime = false;
-  isMouthOpen = true; // ← 必ず open.jpg にする
-  mouthTimer = 0;
-  mouthInterval = 60; // ← 開閉間隔を1秒にリセット
-  playNextBGM();
-};
+  akubiAudio.onended = () => {
+    isBonusTime = false;
+    isMouthOpen = true;       // ← open.jpg に戻す
+    mouthTimer = 0;
+    mouthInterval = 60;       // ← 1秒に戻す
+    playNextBGM();
+  };
+}
 
     function resetGame() {
       score = 0;
