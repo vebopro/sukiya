@@ -82,27 +82,27 @@
       left: 50%;
       transform: translate(-50%, -50%);
     }
-#rainbowOverlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  pointer-events: none;
-  z-index: 15;
-  mix-blend-mode: screen;
-  opacity: 0;
-  background: linear-gradient(45deg, red, orange, yellow, green, cyan, blue, violet, red);
-  background-size: 400% 400%;
-  animation: rainbowGlow 5s linear infinite;
-  transition: opacity 0.5s ease;
-}
+    #rainbowOverlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 15;
+      mix-blend-mode: screen;
+      opacity: 0;
+      background: linear-gradient(45deg, red, orange, yellow, green, cyan, blue, violet, red);
+      background-size: 400% 400%;
+      animation: rainbowGlow 5s linear infinite;
+      transition: opacity 0.5s ease;
+    }
 
-@keyframes rainbowGlow {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
+    @keyframes rainbowGlow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
   </style>
 </head>
 <body>
@@ -116,7 +116,7 @@
   <button id="tapButton">指を入れる！</button>
   <button id="startButton">ゲームスタート</button>
   <canvas id="gameCanvas"></canvas>
-<div id="rainbowOverlay"></div>
+  <div id="rainbowOverlay"></div>
 
   <audio id="puni" src="puni.wav"></audio>
   <audio id="bgm" loop></audio>
@@ -146,6 +146,7 @@
     let isBonusTime = false;
     let currentAkubiIndex = 1;
     let akubiTimeout = null;
+    let lastScoreTime = Date.now();
 
     const images = {};
     const fingerImages = [];
@@ -195,58 +196,53 @@
       return fingerImages[11];
     }
 
-function getRandomInterval() {
-  const fps = 60; // フレームレート（1秒 = 60フレーム）
-  const withinCycle = score % 60;
-
-  let seconds;
-  if (withinCycle < 10) seconds = 1.0;
-  else if (withinCycle < 20) seconds = 0.9;
-  else if (withinCycle < 30) seconds = 0.8;
-  else if (withinCycle < 40) seconds = 0.7;
-  else if (withinCycle < 50) seconds = 0.6;
-  else seconds = 0.5; // 50?59点まで
-
-  return Math.floor(seconds * fps);
-}
+    function getRandomInterval() {
+      const fps = 60;
+      const withinCycle = score % 60;
+      let seconds;
+      if (withinCycle < 10) seconds = 1.0;
+      else if (withinCycle < 20) seconds = 0.9;
+      else if (withinCycle < 30) seconds = 0.8;
+      else if (withinCycle < 40) seconds = 0.7;
+      else if (withinCycle < 50) seconds = 0.6;
+      else seconds = 0.5;
+      return Math.floor(seconds * fps);
+    }
 
     function playNextBGM() {
       bgm.src = bgmList[bgmIndex];
+      bgm.load();
       bgm.play();
       bgmIndex = (bgmIndex + 1) % bgmList.length;
     }
 
     function scheduleAkubi() {
+      clearTimeout(akubiTimeout);
       const interval = 30000 + Math.random() * 30000;
       akubiTimeout = setTimeout(() => {
-        triggerAkubi();
-        scheduleAkubi();
+        const now = Date.now();
+        if (now - lastScoreTime <= 10000) {
+          triggerAkubi();
+        }
       }, interval);
     }
 
-function triggerAkubi() {
-  isBonusTime = true;
-  bgm.pause();
-
-  const r = Math.random();
-  if (r < 0.95) {
-    currentAkubiIndex = Math.floor(Math.random() * 4) + 1;
-  } else {
-    currentAkubiIndex = 5 + Math.floor(Math.random() * 2);
-  }
-
-  const akubiAudio = akubiAudioList[currentAkubiIndex - 1];
-  akubiAudio.currentTime = 0;
-  akubiAudio.play();
-
-  akubiAudio.onended = () => {
-    isBonusTime = false;
-    isMouthOpen = true;       // ← open.jpg に戻す
-    mouthTimer = 0;
-    mouthInterval = 60;       // ← 1秒に戻す
-    playNextBGM();
-  };
-}
+    function triggerAkubi() {
+      isBonusTime = true;
+      bgm.pause();
+      const r = Math.random();
+      currentAkubiIndex = (r < 0.95) ? Math.floor(Math.random() * 4) + 1 : 5 + Math.floor(Math.random() * 2);
+      const akubiAudio = akubiAudioList[currentAkubiIndex - 1];
+      akubiAudio.currentTime = 0;
+      akubiAudio.play();
+      akubiAudio.onended = () => {
+        isBonusTime = false;
+        isMouthOpen = true;
+        mouthTimer = 0;
+        mouthInterval = 60;
+        playNextBGM();
+      };
+    }
 
     function resetGame() {
       score = 0;
@@ -266,17 +262,12 @@ function triggerAkubi() {
     function draw() {
       if (gameOver) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const bg = isBonusTime
-        ? images[`akubi${currentAkubiIndex}`]
-        : (isMouthOpen ? images.open : images.close);
-
+      const bg = isBonusTime ? images[`akubi${currentAkubiIndex}`] : (isMouthOpen ? images.open : images.close);
       const scale = Math.min(canvas.width / bg.width, canvas.height / bg.height);
       const imgW = bg.width * scale;
       const imgH = bg.height * scale;
       const imgX = (canvas.width - imgW) / 2;
       const imgY = (canvas.height - imgH) / 2;
-
       ctx.drawImage(bg, imgX, imgY, imgW, imgH);
       const offsetY = fingerLift ? -20 : 0;
       if (selectedFinger) {
@@ -291,8 +282,8 @@ function triggerAkubi() {
           mouthInterval = getRandomInterval();
         }
       }
-      document.getElementById("rainbowOverlay").style.opacity = isBonusTime ? "0.4" : "0";
 
+      document.getElementById("rainbowOverlay").style.opacity = isBonusTime ? "0.4" : "0";
       requestAnimationFrame(draw);
     }
 
@@ -305,12 +296,14 @@ function triggerAkubi() {
 
       if (isMouthOpen || isBonusTime) {
         score++;
+        lastScoreTime = Date.now();
         scoreEl.textContent = "スコア: " + score;
         if (score > highScore) {
           highScore = score;
           localStorage.setItem("highScore", highScore);
           highScoreEl.textContent = "ハイスコア: " + highScore;
         }
+        scheduleAkubi();
       } else {
         gameOver = true;
         bgm.pause();
@@ -338,19 +331,20 @@ function triggerAkubi() {
     startBtn.addEventListener("click", () => {
       startBtn.style.display = "none";
       loadImages().then(() => {
+        bgm.load(); // 明示的にロード
         highScoreEl.textContent = "ハイスコア: " + highScore;
         resetGame();
       });
     });
-// Service Worker 登録
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('service-worker.js')
-      .then(reg => console.log('Service Worker registered:', reg.scope))
-      .catch(err => console.error('Service Worker registration failed:', err));
-  });
-}
 
+    // Service Worker 登録
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js')
+          .then(reg => console.log('Service Worker registered:', reg.scope))
+          .catch(err => console.error('Service Worker registration failed:', err));
+      });
+    }
   </script>
 </body>
 </html>
