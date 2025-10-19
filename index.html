@@ -5,104 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>お口に指を入れるゲーム</title>
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      width: 100vw;
-      height: 100vh;
-      background: black;
-      position: relative;
-    }
-    canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-    }
-    #score, #highScore {
-      position: absolute;
-      left: 2%;
-      color: white;
-      font-family: sans-serif;
-      text-shadow: 2px 2px 4px black;
-      z-index: 10;
-    }
-    #score {
-      top: 2%;
-      font-size: 4vh;
-    }
-    #highScore {
-      top: 7%;
-      font-size: 2.5vh;
-      color: yellow;
-    }
-    #result {
-      display: none;
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.85);
-      color: white;
-      font-size: 3vh;
-      text-align: center;
-      padding-top: 20vh;
-      z-index: 20;
-    }
-    #tweetBtn, #retryBtn {
-      font-size: 2.5vh;
-      margin: 2vh;
-      padding: 1vh 3vh;
-      background: #1DA1F2;
-      border: none;
-      color: white;
-      border-radius: 1vh;
-      cursor: pointer;
-    }
-    #retryBtn {
-      background: #28a745;
-    }
-    #tapButton, #startButton {
-      position: absolute;
-      font-size: 3vh;
-      padding: 2vh 4vh;
-      border-radius: 2vh;
-      background: rgba(255, 255, 255, 0.85);
-      border: none;
-      z-index: 30;
-      cursor: pointer;
-    }
-    #tapButton {
-      bottom: 5vh;
-      right: 5vw;
-    }
-    #startButton {
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-    }
-    #rainbowOverlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      pointer-events: none;
-      z-index: 15;
-      mix-blend-mode: screen;
-      opacity: 0;
-      background: linear-gradient(45deg, red, orange, yellow, green, cyan, blue, violet, red);
-      background-size: 400% 400%;
-      animation: rainbowGlow 5s linear infinite;
-      transition: opacity 0.5s ease;
-    }
-
-    @keyframes rainbowGlow {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
-    }
+    html, body { margin:0; padding:0; overflow:hidden; width:100vw; height:100vh; background:black; position:relative; }
+    canvas { position:absolute; top:0; left:0; }
+    #score,#highScore { position:absolute; left:2%; color:white; font-family:sans-serif; text-shadow:2px 2px 4px black; z-index:10; }
+    #score { top:2%; font-size:4vh; }
+    #highScore { top:7%; font-size:2.5vh; color:yellow; }
+    #result { display:none; position:absolute; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); color:white; font-size:3vh; text-align:center; padding-top:20vh; z-index:20; }
+    #tweetBtn,#retryBtn { font-size:2.5vh; margin:2vh; padding:1vh 3vh; border:none; border-radius:1vh; cursor:pointer; }
+    #tweetBtn { background:#1DA1F2; color:white; }
+    #retryBtn { background:#28a745; color:white; }
+    #tapButton,#startButton { position:absolute; font-size:3vh; padding:2vh 4vh; border-radius:2vh; background:rgba(255,255,255,0.85); border:none; z-index:30; cursor:pointer; }
+    #tapButton { bottom:5vh; right:5vw; }
+    #startButton { top:50%; left:50%; transform:translate(-50%, -50%); }
+    #rainbowOverlay { position:fixed; top:0; left:0; width:100vw; height:100vh; pointer-events:none; z-index:15; mix-blend-mode:screen; opacity:0; background:linear-gradient(45deg,red,orange,yellow,green,cyan,blue,violet,red); background-size:400% 400%; animation:rainbowGlow 5s linear infinite; transition:opacity 0.5s ease; }
+    @keyframes rainbowGlow { 0% { background-position:0% 50%; } 50% { background-position:100% 50%; } 100% { background-position:0% 50%; } }
   </style>
 </head>
 <body>
@@ -151,213 +67,174 @@
     const images = {};
     const fingerImages = [];
     const sources = { open: "open.jpg", close: "close.jpg" };
-    for (let i = 1; i <= 6; i++) {
-      sources[`akubi${i}`] = `akubi${i}.jpg`;
-    }
-
-    const endSEList = [...Array(15)].map((_, i) => new Audio(`end${i + 1}.mp3`));
-    const akubiAudioList = [...Array(6)].map((_, i) => new Audio(`akubi${i + 1}.mp3`));
-    const bgmList = ["bgm1.mp3", "bgm2.mp3", "bgm3.mp3", "bgm4.mp3"];
+    for (let i = 1; i <= 6; i++) { sources[`akubi${i}`] = `akubi${i}.jpg`; }
+    const endSEList = [...Array(15)].map((_, i) => new Audio(`end${i+1}.mp3`));
+    const akubiAudioList = [...Array(6)].map((_, i) => new Audio(`akubi${i+1}.mp3`));
+    const bgmList = ["bgm1.mp3","bgm2.mp3","bgm3.mp3","bgm4.mp3"];
     let bgmIndex = 0;
 
-    function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    }
+    function resizeCanvas() { canvas.width=window.innerWidth; canvas.height=window.innerHeight; }
     window.addEventListener("resize", resizeCanvas);
     resizeCanvas();
 
     function loadImages() {
       const promises = [];
-
       for (const [key, src] of Object.entries(sources)) {
-        promises.push(new Promise(resolve => {
-          const img = new Image();
-          img.onload = () => { images[key] = img; resolve(); };
-          img.src = src;
-        }));
+        promises.push(new Promise(resolve => { const img=new Image(); img.onload=()=>{images[key]=img;resolve();}; img.src=src; }));
       }
-
-      for (let i = 1; i <= 12; i++) {
-        promises.push(new Promise(resolve => {
-          const img = new Image();
-          img.onload = () => { fingerImages.push(img); resolve(); };
-          img.src = `finger${i}.png`;
-        }));
+      for (let i=1;i<=12;i++){
+        promises.push(new Promise(resolve => { const img=new Image(); img.onload=()=>{fingerImages.push(img);resolve();}; img.src=`finger${i}.png`; }));
       }
-
       return Promise.all(promises);
     }
 
     function selectFingerByProbability() {
-      const r = Math.random();
-      if (r < 0.6) return fingerImages[Math.floor(r * 4 / 0.6)];
-      if (r < 0.95) return fingerImages[4 + Math.floor((r - 0.6) * 7 / 0.35)];
+      const r=Math.random();
+      if(r<0.6) return fingerImages[Math.floor(r*4/0.6)];
+      if(r<0.95) return fingerImages[4+Math.floor((r-0.6)*7/0.35)];
       return fingerImages[11];
     }
 
     function getRandomInterval() {
-      const fps = 60;
-      const withinCycle = score % 60;
+      const fps=60;
+      const withinCycle = score%60;
       let seconds;
-      if (withinCycle < 10) seconds = 1.0;
-      else if (withinCycle < 20) seconds = 0.9;
-      else if (withinCycle < 30) seconds = 0.8;
-      else if (withinCycle < 40) seconds = 0.7;
-      else if (withinCycle < 50) seconds = 0.6;
-      else seconds = 0.5;
-      return Math.floor(seconds * fps);
+      if(withinCycle<10) seconds=1.0;
+      else if(withinCycle<20) seconds=0.9;
+      else if(withinCycle<30) seconds=0.8;
+      else if(withinCycle<40) seconds=0.7;
+      else if(withinCycle<50) seconds=0.6;
+      else seconds=0.5;
+      return Math.floor(seconds*fps);
     }
 
     function playNextBGM() {
-      bgm.src = bgmList[bgmIndex];
+      bgm.src=bgmList[bgmIndex];
       bgm.load();
       bgm.play();
-      bgmIndex = (bgmIndex + 1) % bgmList.length;
+      bgmIndex=(bgmIndex+1)%bgmList.length;
     }
 
-function scheduleAkubi() {
-  clearTimeout(akubiTimeout);
-  const interval = 30000 + Math.random() * 30000;
-
-  akubiTimeout = setTimeout(() => {
-    const now = Date.now();
-    if (now - lastScoreTime <= 10000) {
-      triggerAkubi();
-    } else {
-      // ?? スキップした場合でも、再スケジュールする！
-      console.log("スコア放置によりボーナスタイムスキップ → 再スケジュール");
-      scheduleAkubi(); // ← 再予約！
+    function scheduleAkubi() {
+      clearTimeout(akubiTimeout);
+      const interval = 30000 + Math.random()*30000;
+      akubiTimeout = setTimeout(() => {
+        const now = Date.now();
+        if(now - lastScoreTime <= 10000){
+          triggerAkubi();
+        } else {
+          console.log("スコア放置によりボーナスタイムスキップ → 再スケジュール");
+          scheduleAkubi();
+        }
+      }, interval);
     }
-  }, interval);
-}
-function triggerAkubi() {
-  isBonusTime = true;
-  bgm.pause();
 
-  const r = Math.random();
-  currentAkubiIndex = (r < 0.95) 
-    ? Math.floor(Math.random() * 4) + 1 
-    : 5 + Math.floor(Math.random() * 2);
+    // ★修正済み triggerAkubi() 関数（akubi5が2%）
+    function triggerAkubi() {
+      isBonusTime = true;
+      bgm.pause();
 
-  const akubiAudio = akubiAudioList[currentAkubiIndex - 1];
-  akubiAudio.currentTime = 0;
-  akubiAudio.play();
+      const r = Math.random();
+      if (r < 0.02) {
+        currentAkubiIndex = 5; // akubi5：2%
+      } else {
+        const r2 = (r - 0.02) / 0.98; // 0?1 に正規化
+        if (r2 < 0.8) { currentAkubiIndex = Math.floor(Math.random()*4)+1; } // akubi1?4: 78.4%
+        else { currentAkubiIndex = 6; } // akubi6: 19.6%
+      }
 
-  akubiAudio.onended = () => {
-    isBonusTime = false;
-    isMouthOpen = true;
-    mouthTimer = 0;
-    mouthInterval = 60;
-    playNextBGM();
+      const akubiAudio = akubiAudioList[currentAkubiIndex-1];
+      akubiAudio.currentTime=0;
+      akubiAudio.play();
 
-    scheduleAkubi(); // ← 追加：ボーナスタイム終了後に次のタイマーを再設定
-  };
-}
+      akubiAudio.onended = () => {
+        isBonusTime=false;
+        isMouthOpen=true;
+        mouthTimer=0;
+        mouthInterval=60;
+        playNextBGM();
+        scheduleAkubi();
+      };
+    }
 
-function resetGame() {
-  score = 0;
-  gameOver = false;
-  isMouthOpen = true;
-  mouthTimer = 0;
-  mouthInterval = getRandomInterval();
-  selectedFinger = selectFingerByProbability();
-  scoreEl.textContent = "スコア: 0";
-  result.style.display = "none";
-  tapBtn.style.display = "block";
-
-  lastScoreTime = Date.now(); // ← 追加：スコアタイムを初期化（重要）
-
-  playNextBGM();
-  scheduleAkubi();
-  draw();
-}
+    function resetGame() {
+      score=0;
+      gameOver=false;
+      isMouthOpen=true;
+      mouthTimer=0;
+      mouthInterval=getRandomInterval();
+      selectedFinger=selectFingerByProbability();
+      scoreEl.textContent="スコア: 0";
+      result.style.display="none";
+      tapBtn.style.display="block";
+      lastScoreTime=Date.now();
+      playNextBGM();
+      scheduleAkubi();
+      draw();
+    }
 
     function draw() {
-      if (gameOver) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if(gameOver) return;
+      ctx.clearRect(0,0,canvas.width,canvas.height);
       const bg = isBonusTime ? images[`akubi${currentAkubiIndex}`] : (isMouthOpen ? images.open : images.close);
-      const scale = Math.min(canvas.width / bg.width, canvas.height / bg.height);
-      const imgW = bg.width * scale;
-      const imgH = bg.height * scale;
-      const imgX = (canvas.width - imgW) / 2;
-      const imgY = (canvas.height - imgH) / 2;
-      ctx.drawImage(bg, imgX, imgY, imgW, imgH);
-      const offsetY = fingerLift ? -20 : 0;
-      if (selectedFinger) {
-        ctx.drawImage(selectedFinger, imgX, imgY + offsetY, imgW, imgH);
-      }
-
-      if (!isBonusTime) {
+      const scale = Math.min(canvas.width/bg.width, canvas.height/bg.height);
+      const imgW=bg.width*scale, imgH=bg.height*scale;
+      const imgX=(canvas.width-imgW)/2, imgY=(canvas.height-imgH)/2;
+      ctx.drawImage(bg,imgX,imgY,imgW,imgH);
+      const offsetY=fingerLift?-20:0;
+      if(selectedFinger) ctx.drawImage(selectedFinger,imgX,imgY+offsetY,imgW,imgH);
+      if(!isBonusTime){
         mouthTimer++;
-        if (mouthTimer >= mouthInterval) {
-          isMouthOpen = !isMouthOpen;
-          mouthTimer = 0;
-          mouthInterval = getRandomInterval();
-        }
+        if(mouthTimer>=mouthInterval){ isMouthOpen=!isMouthOpen; mouthTimer=0; mouthInterval=getRandomInterval(); }
       }
-
-      document.getElementById("rainbowOverlay").style.opacity = isBonusTime ? "0.4" : "0";
+      document.getElementById("rainbowOverlay").style.opacity=isBonusTime?"0.4":"0";
       requestAnimationFrame(draw);
     }
 
-function handleInput() {
-  if (gameOver) return;
-  puni.currentTime = 0;
-  puni.play();
-  fingerLift = true;
-  setTimeout(() => fingerLift = false, 100);
+    function handleInput() {
+      if(gameOver) return;
+      puni.currentTime=0;
+      puni.play();
+      fingerLift=true;
+      setTimeout(()=>fingerLift=false,100);
 
-  if (isMouthOpen || isBonusTime) {
-    score++;
-    lastScoreTime = Date.now(); // スコアが入ったタイミングを更新
-    scoreEl.textContent = "スコア: " + score;
-    if (score > highScore) {
-      highScore = score;
-      localStorage.setItem("highScore", highScore);
-      highScoreEl.textContent = "ハイスコア: " + highScore;
+      if(isMouthOpen||isBonusTime){
+        score++;
+        lastScoreTime=Date.now();
+        scoreEl.textContent="スコア: "+score;
+        if(score>highScore){ highScore=score; localStorage.setItem("highScore",highScore); highScoreEl.textContent="ハイスコア: "+highScore; }
+      } else {
+        gameOver=true;
+        bgm.pause();
+        akubiAudioList.forEach(a=>a.pause());
+        clearTimeout(akubiTimeout);
+        const endSE=endSEList[Math.floor(Math.random()*endSEList.length)];
+        endSE.currentTime=0;
+        endSE.play();
+        finalScore.textContent=`スコア: ${score}`;
+        result.style.display="block";
+      }
     }
 
-  } else {
-    gameOver = true;
-    bgm.pause();
-    akubiAudioList.forEach(a => a.pause());
-    clearTimeout(akubiTimeout);
-    const endSE = endSEList[Math.floor(Math.random() * endSEList.length)];
-    endSE.currentTime = 0;
-    endSE.play();
-    finalScore.textContent = `スコア: ${score}`;
-    result.style.display = "block";
-  }
-}
-
-    window.addEventListener("keydown", e => {
-      if (e.code === "Space") handleInput();
-    });
-    tapBtn.addEventListener("click", handleInput);
-    retryBtn.addEventListener("click", resetGame);
-    tweetBtn.addEventListener("click", () => {
-      const tweetText = `#お口に指を入れるゲーム で${score}点をとったよ！ #renge_morinyan`;
-      const tweetURL = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
-      window.open(tweetURL, "_blank");
+    window.addEventListener("keydown",e=>{if(e.code==="Space") handleInput();});
+    tapBtn.addEventListener("click",handleInput);
+    retryBtn.addEventListener("click",resetGame);
+    tweetBtn.addEventListener("click",()=>{
+      const tweetText=`#お口に指を入れるゲーム で${score}点をとったよ！ #renge_morinyan`;
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`,"_blank");
     });
 
-    startBtn.addEventListener("click", () => {
-      startBtn.style.display = "none";
-      loadImages().then(() => {
-        bgm.load(); // 明示的にロード
-        highScoreEl.textContent = "ハイスコア: " + highScore;
+    startBtn.addEventListener("click",()=>{
+      startBtn.style.display="none";
+      loadImages().then(()=>{
+        bgm.load();
+        highScoreEl.textContent="ハイスコア: "+highScore;
         resetGame();
       });
     });
 
-    // Service Worker 登録
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('service-worker.js')
-          .then(reg => console.log('Service Worker registered:', reg.scope))
-          .catch(err => console.error('Service Worker registration failed:', err));
-      });
+    if('serviceWorker' in navigator){
+      window.addEventListener('load',()=>{navigator.serviceWorker.register('service-worker.js').then(reg=>console.log('Service Worker registered:',reg.scope)).catch(err=>console.error('Service Worker registration failed:',err));});
     }
   </script>
 </body>
